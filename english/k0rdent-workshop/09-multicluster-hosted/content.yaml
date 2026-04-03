@@ -1,0 +1,200 @@
+version: 2
+number: 9
+title: "Multi-Cluster Services & Hosted Control Planes"
+description: "Deploy services across multiple clusters simultaneously and understand hosted control plane architecture."
+
+sections:
+  - title: "MultiClusterService Concept"
+    explanation: |
+      A `MultiClusterService` deploys services across **multiple matching clusters** simultaneously using label selectors:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: MultiClusterService
+      metadata:
+        name: shared-ingress
+      spec:
+        clusterSelector:
+          matchLabels:
+            environment: dev
+        serviceSpec:
+          services:
+          - template: ingress-nginx-4.11.3
+            name: ingress-nginx
+            namespace: ingress-nginx
+          priority: 100
+      ```
+
+      This deploys ingress-nginx to **every ClusterDeployment** with the label `environment: dev`. When new clusters get that label, they automatically receive the service.
+    examples:
+      - q: "What does MultiClusterService do?"
+        a: "Deploys services across multiple clusters simultaneously using label selectors to match target ClusterDeployments."
+        rel:
+          - ["MultiClusterService", "CRD for deploying services across multiple matching clusters"]
+          - ["clusterSelector", "Label matcher that determines which clusters receive the service"]
+
+      - type: select
+        q: "A new cluster gets the label 'environment: dev'. What happens to matching MultiClusterServices?"
+        options:
+          - text: "Nothing — existing MultiClusterServices don't affect new clusters"
+          - text: "The services are automatically deployed to the new cluster"
+            correct: true
+          - text: "An admin must manually trigger deployment"
+          - text: "The cluster must be restarted"
+        labels: ["Quiz"]
+
+  - title: "Setting Cluster Labels"
+    explanation: |
+      For MultiClusterService to work, your ClusterDeployments need labels:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterDeployment
+      metadata:
+        name: my-hetzner-cluster
+        namespace: kcm-system
+      spec:
+        template: remote-cluster-1-0-19
+        credential: remote-cred
+        config:
+          clusterLabels:
+            environment: dev
+            tier: backend
+            region: eu
+      ```
+
+      Or add labels to an existing cluster:
+      ```bash
+      kubectl patch clusterdeployment my-hetzner-cluster \
+        -n kcm-system --type='merge' \
+        -p '{"spec":{"config":{"clusterLabels":{"environment":"dev"}}}}'
+      ```
+    examples:
+      - q: "Where do you set cluster labels for MultiClusterService matching?"
+        a: "In spec.config.clusterLabels of the ClusterDeployment."
+
+  - title: "Priority and Conflict Resolution"
+    explanation: |
+      When multiple sources try to deploy different versions of the same service, **priority** resolves conflicts:
+
+      ```yaml
+      spec:
+        serviceSpec:
+          priority: 100  # Higher number = higher priority
+      ```
+
+      Rules:
+      - **Higher numbers override lower** — priority 200 beats priority 100
+      - **Equal priorities** — first-come-first-served
+      - Priority applies per-service, not globally
+
+      This lets you have a default MultiClusterService with `priority: 100` and override specific clusters with `priority: 200` in their ClusterDeployment.
+    examples:
+      - q: "How does k0rdent resolve conflicting service deployments?"
+        a: "Using numeric priority values — higher numbers override lower. Equal priorities resolve first-come-first-served."
+
+      - type: input
+        q: "Which wins: a service with priority 100 or priority 200?"
+        a:
+          - "200"
+          - "priority 200"
+        labels: ["Quiz"]
+
+  - title: "MultiClusterService Dependencies"
+    explanation: |
+      Services can depend on other services:
+
+      **Within a service spec** — services can depend on other services in the same deployment.
+
+      **Between MultiClusterServices** — use `spec.dependsOn`:
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: MultiClusterService
+      metadata:
+        name: my-app
+      spec:
+        dependsOn:
+          - name: cert-manager-mcs
+          - name: shared-ingress
+        clusterSelector:
+          matchLabels:
+            environment: dev
+        serviceSpec:
+          services:
+          - template: my-app-template
+            name: my-app
+            namespace: default
+      ```
+
+      This ensures cert-manager and ingress are deployed **before** my-app on all matching clusters.
+    examples:
+      - q: "How do you ensure cert-manager is deployed before your app across clusters?"
+        a: "Use spec.dependsOn in your MultiClusterService to reference the cert-manager MultiClusterService."
+        rel:
+          - ["dependsOn", "Field that ensures prerequisite services deploy before dependent ones"]
+
+  - title: "Hosted Control Planes"
+    explanation: |
+      A **hosted control plane** runs the Kubernetes control plane (API server, etcd, controllers) as pods **inside the management cluster** rather than on dedicated controller nodes:
+
+      **Benefits:**
+      - **Resource optimization** — no dedicated control plane nodes needed
+      - **Centralized management** — control planes are just pods
+      - **Dynamic scaling** — scale control planes by adjusting pod resources
+      - **Cost savings** — fewer servers needed
+
+      **Trade-off:**
+      If the management cluster goes down, you can't manage child clusters (though workloads keep running).
+
+      k0rdent uses **k0smotron** to enable hosted control planes across all supported providers.
+    examples:
+      - q: "What is a hosted control plane?"
+        a: "A deployment where the child cluster's control plane runs as pods in the management cluster instead of on dedicated nodes."
+        rel:
+          - ["Hosted control plane", "Control plane running as pods in the management cluster"]
+          - ["Standalone", "Traditional deployment where control plane runs on dedicated nodes"]
+          - ["k0smotron", "Tool that enables hosted control planes in k0rdent"]
+
+      - type: select
+        q: "What happens to child cluster workloads if the management cluster goes down?"
+        options:
+          - text: "Workloads stop immediately"
+          - text: "Workloads keep running but can't be managed"
+            correct: true
+          - text: "Workloads auto-migrate to another cluster"
+          - text: "Nothing — child clusters are fully independent"
+        labels: ["Quiz"]
+
+  - title: "Hosted vs. Standalone"
+    explanation: |
+      Choosing between hosted and standalone depends on your needs:
+
+      | Aspect | Standalone | Hosted |
+      |--------|-----------|--------|
+      | **Control plane** | Dedicated nodes | Pods in management cluster |
+      | **Independence** | Fully self-contained | Depends on management cluster |
+      | **Cost** | Higher (extra nodes) | Lower (shared resources) |
+      | **Scaling** | Scale nodes | Scale pods |
+      | **Use case** | Production, isolation | Dev/test, cost optimization |
+
+      Hosted control plane templates are named with `hosted-cp` suffix:
+      ```bash
+      kubectl get clustertemplate -n kcm-system | grep hosted
+      ```
+
+      Supported providers: AWS, Azure, GCP, OpenStack, VMware, KubeVirt.
+    examples:
+      - q: "When would you choose a hosted control plane over standalone?"
+        a: "For dev/test environments or when cost optimization is important — hosted control planes use fewer resources."
+
+      - type: multiple-choice
+        q: "Which are advantages of hosted control planes? (Select all)"
+        options:
+          - text: "Lower cost — no dedicated control plane nodes"
+            correct: true
+          - text: "Full independence from management cluster"
+          - text: "Dynamic pod-based scaling"
+            correct: true
+          - text: "Centralized control plane management"
+            correct: true
+        labels: ["Quiz"]

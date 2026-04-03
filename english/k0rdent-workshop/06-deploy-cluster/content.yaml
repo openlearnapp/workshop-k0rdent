@@ -1,0 +1,294 @@
+version: 2
+number: 6
+title: "Deploying Your First Cluster"
+description: "Deploy a k0s child cluster to Hetzner servers using k0rdent's Remote/SSH provider."
+
+sections:
+  - title: "Deployment Overview"
+    explanation: |
+      Deploying a cluster with k0rdent follows an **8-step process**:
+
+      1. Create Credential object (done in previous lesson)
+      2. Select a ClusterTemplate
+      3. Optionally configure ClusterAuthentication
+      4. Write the ClusterDeployment YAML
+      5. Apply the configuration
+      6. Verify creation
+      7. Monitor provisioning
+      8. Retrieve kubeconfig
+
+      For our Hetzner setup, we'll deploy a cluster using the **remote/SSH** provider, which installs k0s on target machines via SSH.
+    examples:
+      - q: "What are the 8 steps to deploy a cluster with k0rdent?"
+        a: "Create credentials, select template, configure auth (optional), write ClusterDeployment YAML, apply, verify, monitor, and retrieve kubeconfig."
+        rel:
+          - ["ClusterDeployment", "CRD representing the desired state of a managed cluster"]
+
+  - title: "Prepare Worker Nodes on Hetzner"
+    explanation: |
+      Create 1-2 additional Hetzner servers that will become your child cluster worker nodes:
+
+      **Requirements:**
+      - Linux OS (Ubuntu 22.04 recommended)
+      - SSH root access enabled
+      - Internet connectivity
+      - Network connectivity to the management cluster
+
+      **Steps:**
+      1. In Hetzner Cloud Console, create 1-2 servers (e.g., CX21 — 2 vCPU, 4 GB RAM)
+      2. Use the **same SSH key** as your management cluster
+      3. Note the public IP addresses of each worker
+
+      ```bash
+      # Test SSH connectivity from management cluster
+      ssh root@WORKER_IP_1 "hostname"
+      ssh root@WORKER_IP_2 "hostname"
+      ```
+    examples:
+      - q: "What are the requirements for remote worker nodes?"
+        a: "Linux OS, SSH root access, internet connectivity, and network connectivity to the management cluster."
+
+      - type: multiple-choice
+        q: "What must be true about the worker nodes? (Select all)"
+        options:
+          - text: "SSH root access must be enabled"
+            correct: true
+          - text: "They must run the same Linux distribution"
+          - text: "They must have internet connectivity"
+            correct: true
+          - text: "They must have Kubernetes pre-installed"
+        labels: ["Quiz"]
+
+  - title: "Create the SSH Credential"
+    explanation: |
+      If you haven't done so in the previous lesson, create the SSH credential:
+
+      ```bash
+      # Set variables
+      export KEY_PATH=~/.ssh/id_ed25519
+      export PRIVATE_SSH_KEY_B64=$(cat $KEY_PATH | base64 -w 0)
+      export SECRET_NAME=remote-ssh-key
+      export CREDENTIAL_NAME=remote-cred
+      ```
+
+      Apply the Secret:
+      ```bash
+      cat <<EOF | kubectl apply -f -
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: ${SECRET_NAME}
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+      type: Opaque
+      data:
+        value: ${PRIVATE_SSH_KEY_B64}
+      EOF
+      ```
+
+      Apply the Credential:
+      ```bash
+      cat <<EOF | kubectl apply -f -
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: ${CREDENTIAL_NAME}
+        namespace: kcm-system
+      spec:
+        identityRef:
+          apiVersion: v1
+          kind: Secret
+          name: ${SECRET_NAME}
+          namespace: kcm-system
+      EOF
+      ```
+
+      Create the required resource template ConfigMap:
+      ```bash
+      cat <<EOF | kubectl apply -f -
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: remote-ssh-key-resource-template
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+        annotations:
+          projectsveltos.io/template: "true"
+      EOF
+      ```
+    examples:
+      - q: "Why do we need the remote-ssh-key-resource-template ConfigMap?"
+        a: "It's required by k0rdent's remote provider for future templating needs. It contains only metadata — no actual data values."
+        rel:
+          - ["remote-ssh-key-resource-template", "Required ConfigMap for remote/SSH credential setup"]
+
+  - title: "Select a Template and Deploy"
+    explanation: |
+      List available remote templates:
+      ```bash
+      kubectl get clustertemplate -n kcm-system | grep remote
+      ```
+
+      Look for a template like `remote-cluster-1-0-19`. Now create the ClusterDeployment:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterDeployment
+      metadata:
+        name: my-hetzner-cluster
+        namespace: kcm-system
+      spec:
+        template: remote-cluster-1-0-19
+        credential: remote-cred
+        propagateCredentials: false
+        config:
+          k0smotron:
+            service:
+              type: NodePort
+          machines:
+          - address: WORKER_IP_1
+            user: root
+            port: 22
+          - address: WORKER_IP_2
+            user: root
+            port: 22
+      ```
+
+      **Important notes:**
+      - Replace `WORKER_IP_1` and `WORKER_IP_2` with actual IPs
+      - Use `NodePort` for Hetzner (no built-in LoadBalancer)
+      - Use the exact template name from `kubectl get clustertemplate`
+      - The user must have root permissions on the worker nodes
+
+      Apply:
+      ```bash
+      kubectl apply -f my-hetzner-cluster.yaml
+      ```
+    examples:
+      - q: "Why do we use NodePort instead of LoadBalancer for Hetzner?"
+        a: "Hetzner doesn't have a built-in cloud LoadBalancer integration for Kubernetes. NodePort works without any cloud provider."
+        rel:
+          - ["NodePort", "Kubernetes service type that exposes a port on each node"]
+          - ["LoadBalancer", "Kubernetes service type that provisions a cloud load balancer"]
+          - ["propagateCredentials", "Whether to propagate credentials to child cluster nodes"]
+
+      - type: select
+        q: "What service type should you use for k0smotron on Hetzner?"
+        options:
+          - text: "LoadBalancer"
+          - text: "ClusterIP"
+          - text: "NodePort"
+            correct: true
+          - text: "ExternalName"
+        labels: ["Quiz"]
+
+  - title: "Monitor and Verify"
+    explanation: |
+      Watch the cluster being provisioned:
+
+      ```bash
+      # Watch cluster status
+      kubectl -n kcm-system get clusters.cluster.x-k8s.io \
+        my-hetzner-cluster --watch
+
+      # Check remote machine status
+      kubectl -n kcm-system get remotemachines.infrastructure.cluster.x-k8s.io \
+        -l helm.toolkit.fluxcd.io/name=my-hetzner-cluster \
+        -o=jsonpath='{.items[*].status}'
+      ```
+
+      Success output: `{"ready":true}{"ready":true}`
+
+      For detailed status:
+      ```bash
+      kubectl -n kcm-system get clusterdeployment.kcm \
+        my-hetzner-cluster -o=yaml
+      ```
+
+      You can also use `clusterctl` for a visual overview:
+      ```bash
+      clusterctl describe cluster my-hetzner-cluster \
+        -n kcm-system --show-conditions all
+      ```
+    examples:
+      - q: "How do you check if remote machines are ready?"
+        a: "kubectl get remotemachines with a label selector and check for {\"ready\":true} in the status."
+        rel:
+          - ["remotemachines", "CRD representing remote machines managed via SSH"]
+          - ["clusterctl", "CLI tool for Cluster API operations and diagnostics"]
+
+  - title: "Get the Kubeconfig"
+    explanation: |
+      Once the cluster is ready, retrieve the kubeconfig:
+
+      ```bash
+      kubectl -n kcm-system get secret \
+        my-hetzner-cluster-kubeconfig \
+        -o jsonpath='{.data.value}' | base64 -d \
+        > my-hetzner-cluster.kubeconfig
+      ```
+
+      Verify connectivity:
+      ```bash
+      KUBECONFIG=my-hetzner-cluster.kubeconfig kubectl get nodes
+      KUBECONFIG=my-hetzner-cluster.kubeconfig kubectl get pods -A
+      ```
+
+      You now have a fully functional child cluster managed by k0rdent!
+
+      To list all your clusters:
+      ```bash
+      kubectl get ClusterDeployments -A
+      ```
+    examples:
+      - q: "Where is the child cluster's kubeconfig stored?"
+        a: "In a Secret named <cluster-name>-kubeconfig in the same namespace as the ClusterDeployment."
+
+      - type: input
+        q: "What command lists all ClusterDeployments?"
+        a:
+          - "kubectl get ClusterDeployments -A"
+          - "kubectl get clusterdeployments -A"
+          - "kubectl get clusterdeployment -A"
+        labels: ["Quiz"]
+
+  - title: "Key ClusterDeployment Fields"
+    explanation: |
+      Understanding the ClusterDeployment spec:
+
+      ```yaml
+      spec:
+        template: <template-name>      # Which ClusterTemplate to use
+        credential: <credential-name>   # Which Credential to authenticate with
+        dryRun: true/false              # Simulate without provisioning
+        cleanupOnDeletion: true/false   # Remove orphaned resources on delete
+        config:
+          clusterLabels: {}             # Labels for the cluster
+          region: <region>              # Target region
+          controlPlane:
+            instanceType: <type>        # Control plane instance size
+          worker:
+            instanceType: <type>        # Worker instance size
+      ```
+
+      **Useful flags:**
+      - `dryRun: true` — validate configuration without creating resources
+      - `cleanupOnDeletion: true` — removes orphaned LoadBalancer services and storage devices when the cluster is deleted
+    examples:
+      - q: "What does dryRun: true do?"
+        a: "Simulates the deployment to validate configuration without actually provisioning any cloud resources."
+        rel:
+          - ["dryRun", "Simulate deployment without provisioning resources"]
+          - ["cleanupOnDeletion", "Remove orphaned resources when cluster is deleted"]
+
+      - type: select
+        q: "You want to validate your ClusterDeployment YAML before creating real resources. Which field do you set?"
+        options:
+          - text: "validate: true"
+          - text: "dryRun: true"
+            correct: true
+          - text: "testMode: true"
+          - text: "preview: true"
+        labels: ["Quiz"]

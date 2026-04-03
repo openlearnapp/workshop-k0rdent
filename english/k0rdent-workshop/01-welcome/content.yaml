@@ -1,0 +1,174 @@
+version: 2
+number: 1
+title: "Welcome to k0rdent"
+description: "Understand what k0rdent is, why it exists, and its architecture for managing Kubernetes at scale."
+
+sections:
+  - title: "What is k0rdent?"
+    explanation: |
+      **k0rdent** is a Kubernetes lifecycle management platform — a *super control plane* designed to manage Kubernetes clusters at scale through centralized, template-driven provisioning and lifecycle management.
+
+      It was built on three key premises:
+
+      - Kubernetes and its ecosystem are **mature and inherently stable**
+      - Large-scale Kubernetes adoption enables deployment **anywhere**
+      - Community standards and open source **reduce adoption risk**
+
+      k0rdent integrates proven open-source tools (Cluster API, Flux, Sveltos, k0smotron, Velero) into a cohesive lifecycle management framework — so platform engineers don't have to glue them together manually.
+    examples:
+      - q: "What is k0rdent?"
+        a: "A Kubernetes super control plane for centralized, template-driven cluster lifecycle management at scale."
+        rel:
+          - ["k0rdent", "Kubernetes lifecycle management platform (super control plane)"]
+          - ["KCM", "k0rdent Cluster Manager — deployment and lifecycle management of clusters"]
+          - ["KSM", "k0rdent State Manager — installation and lifecycle management of services"]
+          - ["KOF", "k0rdent Observability & FinOps — monitoring, events, and log management"]
+
+      - q: "What problem does k0rdent solve?"
+        a: "It provides a unified platform for provisioning, updating, and managing many Kubernetes clusters across multiple clouds and infrastructures."
+
+      - type: select
+        q: "k0rdent is best described as:"
+        options:
+          - text: "A Kubernetes distribution like k0s or k3s"
+          - text: "A super control plane for managing Kubernetes clusters at scale"
+            correct: true
+          - text: "A CI/CD pipeline tool"
+          - text: "A container runtime"
+        labels: ["Quiz"]
+
+  - title: "Why k0rdent?"
+    explanation: |
+      k0rdent was created to address four key challenges:
+
+      1. **Application Complexity** — Modern workloads (AI/ML, microservices) demand rapid deployment and specialized infrastructure
+      2. **Platform Engineering** — Organizations need Internal Developer Platforms (IDPs) to manage complexity while boosting developer productivity
+      3. **Distributed Infrastructure** — Distributed deployments are the new normal; operators need to manage security, compliance, cost, and resilience
+      4. **Open Source** — Leveraging the Kubernetes ecosystem provides vendor independence and proven tools
+    examples:
+      - q: "What are the four reasons k0rdent exists?"
+        a: "Application complexity, platform engineering needs, distributed infrastructure management, and open source ecosystem leverage."
+        rel:
+          - ["IDP", "Internal Developer Platform — self-service capabilities for developers"]
+          - ["Platform Engineering", "Practice of building and maintaining internal developer platforms"]
+
+      - type: multiple-choice
+        q: "Which challenges does k0rdent address? (Select all)"
+        options:
+          - text: "Growing application and workload complexity"
+            correct: true
+          - text: "Need for internal developer platforms"
+            correct: true
+          - text: "Replacing container runtimes"
+          - text: "Managing distributed infrastructure at scale"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "Architecture Overview"
+    explanation: |
+      k0rdent has three main components:
+
+      **KCM (k0rdent Cluster Manager)**
+      - Wraps CAPI (Cluster API) capabilities
+      - Orchestrates cluster provisioning across providers
+      - Integrates k0smotron for k0s bootstrap and hosted control planes
+
+      **KSM (k0rdent State Manager)**
+      - Lifecycle manages services and applications on child clusters
+      - Leverages ProjectSveltos as built-in CD solution
+      - Deploy, scale, update, upgrade, and teardown services
+
+      **KOF (k0rdent Observability & FinOps)**
+      - Enterprise observability via OpenTelemetry
+      - Centralized metrics, logging, and cost management
+
+      The architecture follows a **management cluster → child clusters** model. The management cluster hosts all controllers and orchestrates everything.
+    examples:
+      - q: "What are the three main components of k0rdent?"
+        a: "KCM (Cluster Manager), KSM (State Manager), and KOF (Observability & FinOps)."
+
+      - q: "What is a management cluster?"
+        a: "The Kubernetes cluster where k0rdent is installed, from which all other managed clusters are controlled."
+        rel:
+          - ["Management Cluster", "The cluster where k0rdent is installed and runs"]
+          - ["Child Cluster", "A cluster provisioned and managed by the management cluster"]
+          - ["CAPI", "Cluster API — declarative Kubernetes cluster lifecycle management"]
+          - ["k0smotron", "Tool for running k0s control planes as pods in the management cluster"]
+          - ["ProjectSveltos", "Open-source Kubernetes add-on controller used by KSM"]
+
+      - type: select
+        q: "Which component handles deploying services to child clusters?"
+        options:
+          - text: "KCM (Cluster Manager)"
+          - text: "KSM (State Manager)"
+            correct: true
+          - text: "KOF (Observability & FinOps)"
+          - text: "CAPI directly"
+        labels: ["Quiz"]
+
+  - title: "Organizational Roles"
+    explanation: |
+      k0rdent defines three organizational roles:
+
+      | Role | Responsibility |
+      |------|---------------|
+      | **Platform Architect** | Designs abstract platforms, creates reusable templates |
+      | **Platform Lead** | Adapts templates to specific clouds, manages access controls |
+      | **Platform Engineer** | Day-to-day management, uses authorized templates, customizes services |
+
+      This separation ensures that credentials and complex configurations are managed by leads, while engineers can deploy clusters without direct credential access.
+    examples:
+      - q: "Who creates reusable templates in k0rdent?"
+        a: "The Platform Architect designs abstract platforms and creates reusable templates."
+        rel:
+          - ["Platform Architect", "Designs platforms and creates reusable templates"]
+          - ["Platform Lead", "Adapts templates, manages access controls and credentials"]
+          - ["Platform Engineer", "Day-to-day cluster and service management"]
+
+      - type: select
+        q: "Who should have direct access to cloud provider credentials?"
+        options:
+          - text: "All platform engineers"
+          - text: "Only the platform lead"
+            correct: true
+          - text: "Only the platform architect"
+          - text: "No one — credentials are auto-generated"
+        labels: ["Quiz"]
+
+  - title: "Supported Providers"
+    explanation: |
+      k0rdent supports multiple infrastructure providers out of the box:
+
+      - **AWS** (CAPA) — standalone and EKS clusters
+      - **Azure** (CAPZ) — standalone and AKS clusters
+      - **GCP** (CAPG) — standalone and GKE clusters
+      - **vSphere** (CAPV) — VMware environments
+      - **OpenStack** (CAPO) — private cloud
+      - **KubeVirt** — Kubernetes-native virtualization
+      - **Remote/SSH** — bare metal or any Linux machine with SSH access
+
+      For this workshop, we'll focus on **Hetzner** using the **Remote/SSH** provider, since Hetzner provides affordable bare-metal and cloud servers perfect for a dev setup.
+    examples:
+      - q: "Which provider do we use for Hetzner in k0rdent?"
+        a: "The Remote/SSH provider, which deploys k0s clusters to any Linux machine via SSH."
+        rel:
+          - ["CAPA", "Cluster API Provider for AWS"]
+          - ["CAPZ", "Cluster API Provider for Azure"]
+          - ["CAPG", "Cluster API Provider for GCP"]
+          - ["CAPV", "Cluster API Provider for vSphere"]
+          - ["CAPO", "Cluster API Provider for OpenStack"]
+          - ["Remote/SSH", "Provider for deploying to bare metal or any Linux machine via SSH"]
+
+      - type: multiple-choice
+        q: "Which providers does k0rdent support? (Select all)"
+        options:
+          - text: "AWS"
+            correct: true
+          - text: "Azure"
+            correct: true
+          - text: "DigitalOcean natively"
+          - text: "Remote/SSH"
+            correct: true
+          - text: "OpenStack"
+            correct: true
+        labels: ["Quiz"]

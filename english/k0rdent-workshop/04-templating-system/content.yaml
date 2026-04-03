@@ -1,0 +1,209 @@
+version: 2
+number: 4
+title: "The Templating System"
+description: "Deep dive into k0rdent's template-driven architecture: ClusterTemplates, ServiceTemplates, and ProviderTemplates."
+
+sections:
+  - title: "Template Types"
+    explanation: |
+      k0rdent uses three types of templates — all are **immutable** after creation:
+
+      **1. ClusterTemplate**
+      Defines infrastructure for creating new clusters. Wraps a Helm chart containing CAPI objects (Machine, Cluster, etc.).
+
+      **2. ServiceTemplate**
+      Defines services, addons, and workloads to deploy on existing clusters. Supports Helm charts, Kustomize, or raw resources.
+
+      **3. ProviderTemplate**
+      Exposes CAPI providers (infrastructure, bootstrap, control-plane). Managed by k0rdent — you typically don't create these.
+
+      All templates are YAML-formatted, support runtime parameterization, and follow a declarative pattern.
+    examples:
+      - q: "What are the three template types in k0rdent?"
+        a: "ClusterTemplate (infrastructure), ServiceTemplate (services/apps), and ProviderTemplate (CAPI providers)."
+        rel:
+          - ["ClusterTemplate", "Immutable blueprint for cluster infrastructure, wraps Helm + CAPI"]
+          - ["ServiceTemplate", "Immutable blueprint for services, supports Helm/Kustomize/resources"]
+          - ["ProviderTemplate", "Exposes CAPI providers, managed by k0rdent"]
+
+      - type: select
+        q: "Which template type would you use to deploy nginx-ingress to a cluster?"
+        options:
+          - text: "ClusterTemplate"
+          - text: "ServiceTemplate"
+            correct: true
+          - text: "ProviderTemplate"
+        labels: ["Quiz"]
+
+  - title: "Template Immutability"
+    explanation: |
+      A critical design principle: **templates are immutable after creation**. You cannot modify a template's spec once it's applied.
+
+      To make changes, you must:
+      1. Create a **new template** with a different name (typically with a version suffix)
+      2. Update your ClusterDeployment or service to reference the new template
+
+      This ensures reproducibility and auditability — you always know exactly what configuration was used for each cluster.
+    examples:
+      - q: "Can you edit a ClusterTemplate after creating it?"
+        a: "No. Templates are immutable. You must create a new template with a different name for any changes."
+
+      - type: select
+        q: "You need to change the instance type in a ClusterTemplate. What do you do?"
+        options:
+          - text: "Edit the existing template with kubectl edit"
+          - text: "Create a new template with the change and a new version name"
+            correct: true
+          - text: "Delete and recreate with the same name"
+          - text: "Patch the template spec"
+        labels: ["Quiz"]
+
+  - title: "Source Objects"
+    explanation: |
+      Templates reference **source objects** that contain the actual deployment content. Supported sources:
+
+      | Source | ClusterTemplate | ServiceTemplate | ProviderTemplate |
+      |--------|:-:|:-:|:-:|
+      | HelmRepository | Yes | Yes | Yes |
+      | GitRepository | Yes | Yes | Yes |
+      | OCIRepository | Yes | Yes | Yes |
+      | Bucket | - | Yes | - |
+      | ConfigMap | - | Yes | - |
+      | Secret | - | Yes | - |
+
+      Source objects must have the label `k0rdent.mirantis.com/managed: "true"` for k0rdent to recognize them.
+    examples:
+      - q: "What label must source objects have?"
+        a: 'k0rdent.mirantis.com/managed: "true"'
+        rel:
+          - ["HelmRepository", "Flux source object pointing to a Helm chart repository"]
+          - ["GitRepository", "Flux source object pointing to a Git repository"]
+          - ["OCIRepository", "Flux source object pointing to an OCI container registry"]
+
+      - type: multiple-choice
+        q: "Which source types does ServiceTemplate support but ClusterTemplate does not? (Select all)"
+        options:
+          - text: "Bucket"
+            correct: true
+          - text: "ConfigMap"
+            correct: true
+          - text: "HelmRepository"
+          - text: "Secret"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "ClusterTemplate Anatomy"
+    explanation: |
+      A ClusterTemplate wraps a Helm chart and declares which providers it needs:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplate
+      metadata:
+        name: custom-aws-standalone
+        namespace: project-ottowa
+      spec:
+        k8sVersion: 1.30.0
+        helm:
+          chartSpec:
+            chart: custom-standalone-cp
+            version: 1.0.1
+            sourceRef:
+              kind: HelmRepository
+              name: custom-repo
+        providers:
+          - bootstrap-k0sproject-k0smotron
+          - control-plane-k0sproject-k0smotron
+          - infrastructure-aws
+        providerContracts:
+          bootstrap-k0sproject-k0smotron: v1beta1
+          control-plane-k0sproject-k0smotron: v1beta1
+          infrastructure-aws: v1beta2
+      ```
+
+      Key fields:
+      - `k8sVersion` — target Kubernetes version for compatibility checking
+      - `helm.chartSpec` — points to the Helm chart
+      - `providers` — required CAPI providers
+      - `providerContracts` — contract versions for compatibility
+    examples:
+      - q: "What does the providers field in a ClusterTemplate specify?"
+        a: "The CAPI providers required to deploy this cluster type (e.g., bootstrap, control-plane, and infrastructure providers)."
+
+      - q: "What Helm configuration methods are available?"
+        a: "chartRef (reference existing HelmChart), chartSpec (inline chart definition), or chartSource (Git/OCI source)."
+
+  - title: "ServiceTemplate Anatomy"
+    explanation: |
+      ServiceTemplates define how applications deploy to child clusters:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplate
+      metadata:
+        name: ingress-nginx-4.11.3
+        namespace: my-namespace
+      spec:
+        helm:
+          chartSpec:
+            chart: ingress-nginx
+            version: 4.11.3
+            interval: 10m0s
+            sourceRef:
+              kind: HelmRepository
+              name: k0rdent-catalog
+      ```
+
+      Additional optional fields:
+      - `spec.k8sConstraint` — Kubernetes version compatibility (e.g., `">=1.28.0 <1.32.0"`)
+      - `spec.helmOptions` — control `wait`, `atomic`, `timeout`, `createNamespace`, etc.
+    examples:
+      - q: "What does k8sConstraint do in a ServiceTemplate?"
+        a: "It defines which Kubernetes versions the service is compatible with, using semver syntax like '>=1.28.0 <1.32.0'."
+        rel:
+          - ["k8sConstraint", "SemVer-format Kubernetes compatibility constraint on ServiceTemplates"]
+          - ["helmOptions", "Global Helm behavior controls (wait, atomic, timeout, etc.)"]
+
+      - type: input
+        q: "ServiceTemplates are immutable. True or false?"
+        a:
+          - "true"
+          - "True"
+        labels: ["Quiz"]
+
+  - title: "Template Chains"
+    explanation: |
+      **TemplateChains** define valid upgrade paths between template versions:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplateChain
+      metadata:
+        name: aws-standalone-cp
+      spec:
+        supportedTemplates:
+          - name: aws-standalone-cp-1-0-22
+          - name: aws-standalone-cp-1-0-20
+            availableUpgrades:
+              - name: aws-standalone-cp-1-0-22
+      ```
+
+      This chain says: clusters using `aws-standalone-cp-1-0-20` can upgrade to `aws-standalone-cp-1-0-22`, but not to arbitrary other templates.
+
+      ServiceTemplateChains work the same way for service upgrades.
+    examples:
+      - q: "What do TemplateChains control?"
+        a: "They define valid upgrade paths — which template versions can be upgraded to which newer versions."
+        rel:
+          - ["ClusterTemplateChain", "Defines valid upgrade paths between ClusterTemplate versions"]
+          - ["ServiceTemplateChain", "Defines valid upgrade paths between ServiceTemplate versions"]
+
+      - type: select
+        q: "What happens if you try to update a cluster to a template not in its chain?"
+        options:
+          - text: "The update proceeds normally"
+          - text: "The update is rejected because the upgrade path is not defined"
+            correct: true
+          - text: "The cluster is deleted and recreated"
+          - text: "A warning is logged but the update proceeds"
+        labels: ["Quiz"]

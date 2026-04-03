@@ -1,0 +1,12 @@
+lessons:
+  - 01-welcome
+  - 02-management-cluster-setup
+  - 03-verify-installation
+  - 04-templating-system
+  - 05-credentials-access
+  - 06-deploy-cluster
+  - 07-cluster-lifecycle
+  - 08-services-ksm
+  - 09-multicluster-hosted
+  - 10-custom-templates
+  - 11-backup-observability

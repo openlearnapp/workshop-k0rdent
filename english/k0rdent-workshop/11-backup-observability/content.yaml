@@ -1,0 +1,272 @@
+version: 2
+number: 11
+title: "Backup, Restore & Observability"
+description: "Protect your management cluster with Velero backups and monitor clusters with KOF."
+
+sections:
+  - title: "Why Backup Matters"
+    explanation: |
+      Your management cluster is the **heart of your infrastructure**. If it fails, you lose the ability to manage all child clusters. Backup and restore capabilities are essential for:
+
+      - **Disaster Recovery** — restore on a new management cluster
+      - **Rollback** — recover from failed upgrades
+      - **Migration** — move management to different infrastructure
+
+      k0rdent integrates **Velero** directly into its Helm chart for backup operations.
+    examples:
+      - q: "Why is backing up the management cluster critical?"
+        a: "The management cluster controls all child clusters. Losing it means losing the ability to manage your entire infrastructure."
+        rel:
+          - ["Velero", "Open-source tool for backing up and restoring Kubernetes clusters"]
+          - ["Disaster Recovery", "Restoring management on a new cluster after failure"]
+
+      - type: select
+        q: "What tool does k0rdent use for backup and restore?"
+        options:
+          - text: "etcdctl"
+          - text: "Velero"
+            correct: true
+          - text: "Kasten K10"
+          - text: "Restic standalone"
+        labels: ["Quiz"]
+
+  - title: "Backup Architecture"
+    explanation: |
+      k0rdent's backup system has a clear responsibility split:
+
+      | Component | Responsibility |
+      |-----------|---------------|
+      | **k0rdent** | Scheduling, determining what to back up |
+      | **Velero** | Executing backups, managing storage |
+
+      **What gets backed up:**
+      - All k0rdent configuration objects (CRDs, templates, credentials)
+      - ClusterDeployment definitions
+      - Service configurations
+      - RBAC and access management rules
+
+      **What does NOT get backed up:**
+      - Child cluster workloads (these are independent)
+      - Cloud provider resources themselves
+    examples:
+      - q: "What is backed up in a k0rdent management backup?"
+        a: "All k0rdent configuration objects: CRDs, templates, credentials, ClusterDeployments, service configs, and RBAC rules."
+
+      - type: select
+        q: "Are child cluster workloads included in management backups?"
+        options:
+          - text: "Yes — everything is backed up"
+          - text: "No — only management cluster configuration is backed up"
+            correct: true
+          - text: "Only if explicitly configured"
+        labels: ["Quiz"]
+
+  - title: "Preparing for Backups"
+    explanation: |
+      Before enabling backups, configure a storage destination for Velero:
+
+      1. **Choose a storage provider** — S3-compatible storage (AWS S3, MinIO, Hetzner Object Storage, etc.)
+      2. **Create storage credentials** — access key and secret for the storage
+      3. **Configure Velero** — via the k0rdent Helm values
+
+      For Hetzner, you can use **Hetzner Object Storage** (S3-compatible):
+      ```bash
+      # Create credentials secret for Velero
+      kubectl create secret generic velero-credentials \
+        -n kcm-system \
+        --from-literal=aws='[default]
+      aws_access_key_id=YOUR_ACCESS_KEY
+      aws_secret_access_key=YOUR_SECRET_KEY'
+      ```
+    examples:
+      - q: "What storage options work with k0rdent's backup system?"
+        a: "Any S3-compatible storage: AWS S3, MinIO, Hetzner Object Storage, etc."
+        rel:
+          - ["S3-compatible storage", "Object storage with AWS S3 API compatibility"]
+          - ["Hetzner Object Storage", "S3-compatible object storage from Hetzner"]
+
+  - title: "Scheduled and On-Demand Backups"
+    explanation: |
+      k0rdent supports two backup modes via the `ManagementBackup` CRD:
+
+      **Scheduled backups:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ManagementBackup
+      metadata:
+        name: daily-backup
+        namespace: kcm-system
+      spec:
+        schedule: "0 2 * * *"  # Daily at 2 AM
+      ```
+
+      **On-demand backups:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ManagementBackup
+      metadata:
+        name: pre-upgrade-backup
+        namespace: kcm-system
+      spec: {}
+      ```
+
+      Apply with `kubectl apply -f backup.yaml`.
+
+      **Best practice:** Always create a backup before upgrading k0rdent or making major changes.
+    examples:
+      - q: "How do you create a daily backup at 2 AM?"
+        a: 'Set spec.schedule to a cron expression: "0 2 * * *" in a ManagementBackup object.'
+        rel:
+          - ["ManagementBackup", "CRD for configuring backup operations"]
+
+      - type: input
+        q: "What CRD is used for k0rdent backups?"
+        a:
+          - "ManagementBackup"
+        labels: ["Quiz"]
+
+  - title: "Restoring from Backup"
+    explanation: |
+      Restoration recreates k0rdent configuration objects from a backup **without reprovisioning** cloud resources:
+
+      **Steps:**
+      1. Install a fresh management cluster with k0rdent
+      2. Configure Velero with access to the backup storage
+      3. List available backups:
+         ```bash
+         velero backup get
+         ```
+      4. Restore from a specific backup:
+         ```bash
+         velero restore create --from-backup <backup-name>
+         ```
+
+      **Important:** Restoring reconnects k0rdent to existing child clusters. Since the cloud resources still exist, k0rdent reconciles and resumes management.
+    examples:
+      - q: "Does restoring from backup reprovision child clusters?"
+        a: "No — restoration recreates configuration objects. k0rdent reconnects to existing clusters without reprovisioning them."
+
+      - type: select
+        q: "After restoring on a new management cluster, what happens to existing child clusters?"
+        options:
+          - text: "They are deleted and recreated"
+          - text: "k0rdent reconnects and resumes management"
+            correct: true
+          - text: "They become unmanaged permanently"
+          - text: "They must be manually re-adopted"
+        labels: ["Quiz"]
+
+  - title: "KOF — Observability & FinOps"
+    explanation: |
+      **KOF (k0rdent Observability & FinOps)** provides enterprise-grade monitoring:
+
+      **Architecture:**
+      - Built on **OpenTelemetry** for unified metrics, logs, and traces
+      - Centralized data collection from all managed clusters
+      - **Grafana** dashboards for visualization
+      - Alert management via configurable rules
+
+      **Key Features:**
+      - Cluster health monitoring
+      - Resource utilization tracking
+      - Cost management and FinOps
+      - Log aggregation
+      - Distributed tracing
+      - Multi-tenancy support
+
+      **Installation:**
+      KOF is installed separately from KCM and has its own Helm chart. It can be deployed on the management cluster or a dedicated observability cluster.
+    examples:
+      - q: "What is KOF?"
+        a: "k0rdent Observability & FinOps — enterprise monitoring built on OpenTelemetry with Grafana dashboards, alerting, and cost management."
+        rel:
+          - ["KOF", "k0rdent Observability & FinOps for monitoring and cost management"]
+          - ["OpenTelemetry", "Unified observability framework for metrics, logs, and traces"]
+          - ["Grafana", "Open-source visualization and dashboard platform"]
+
+      - type: multiple-choice
+        q: "What does KOF provide? (Select all)"
+        options:
+          - text: "Centralized metrics collection"
+            correct: true
+          - text: "Cluster provisioning"
+          - text: "Grafana dashboards"
+            correct: true
+          - text: "Alert management"
+            correct: true
+          - text: "Cost management / FinOps"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "Uninstalling k0rdent"
+    explanation: |
+      If you need to clean up, follow this exact sequence:
+
+      ```bash
+      # 1. Remove all ClusterDeployments first
+      kubectl delete clusterdeployments --all -n kcm-system
+
+      # 2. Wait for child clusters to be fully deprovisioned
+      kubectl get clusters.cluster.x-k8s.io -n kcm-system --watch
+
+      # 3. Delete the Management object
+      kubectl delete management.k0rdent kcm
+
+      # 4. Uninstall the Helm release
+      helm uninstall kcm -n kcm-system
+
+      # 5. Remove the namespace
+      kubectl delete ns kcm-system
+      ```
+
+      **Important:** Follow this order! Deleting the Helm release before removing ClusterDeployments can leave orphaned cloud resources.
+    examples:
+      - q: "Why must you delete ClusterDeployments before uninstalling the Helm chart?"
+        a: "Deleting the Helm chart first removes the controllers that clean up cloud resources, leaving orphaned VMs and infrastructure."
+
+      - type: select
+        q: "What is the correct uninstall order?"
+        options:
+          - text: "helm uninstall → delete namespace → delete ClusterDeployments"
+          - text: "delete ClusterDeployments → delete Management → helm uninstall → delete namespace"
+            correct: true
+          - text: "delete namespace → everything is cleaned up"
+          - text: "kubectl delete all --all → helm uninstall"
+        labels: ["Quiz"]
+
+  - title: "Workshop Summary"
+    explanation: |
+      Congratulations! You've completed the k0rdent workshop. Here's what you've learned:
+
+      | Lesson | Topic |
+      |--------|-------|
+      | 1 | k0rdent concepts and architecture |
+      | 2 | Setting up a management cluster on Hetzner |
+      | 3 | Verifying the installation |
+      | 4 | The templating system (Cluster/Service/Provider templates) |
+      | 5 | Credentials and access management |
+      | 6 | Deploying clusters via SSH/Remote |
+      | 7 | Cluster lifecycle management |
+      | 8 | Working with services (KSM) |
+      | 9 | Multi-cluster services and hosted control planes |
+      | 10 | Creating custom templates |
+      | 11 | Backup, restore, and observability |
+
+      **Next steps:**
+      - Explore the [k0rdent documentation](https://docs.k0rdent.io/v1.8.0/) for deep dives
+      - Try deploying to other providers (AWS, Azure, GCP)
+      - Set up KOF for full observability
+      - Build custom templates for your organization
+      - Join the k0rdent community
+    examples:
+      - q: "Where can I find the full k0rdent documentation?"
+        a: "https://docs.k0rdent.io/v1.8.0/"
+
+      - type: select
+        q: "Which k0rdent component would you explore next for production use?"
+        options:
+          - text: "KOF for monitoring and observability"
+            correct: true
+          - text: "None — this workshop covers everything"
+          - text: "Replace k0rdent with a different tool"
+        labels: ["Quiz"]

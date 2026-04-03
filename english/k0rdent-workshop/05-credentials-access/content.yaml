@@ -1,0 +1,192 @@
+version: 2
+number: 5
+title: "Credentials & Access Management"
+description: "Learn how k0rdent manages provider credentials securely and controls access via RBAC."
+
+sections:
+  - title: "The Credential Model"
+    explanation: |
+      k0rdent abstracts credential management through a **three-layer model**:
+
+      1. **Secret** — contains actual provider credentials (access keys, SSH keys, etc.)
+      2. **ClusterIdentity** — a Kubernetes object referencing the Secret (provider-specific)
+      3. **Credential** — a k0rdent CRD that references the ClusterIdentity and makes it available to engineers
+
+      This separation ensures that platform engineers can deploy clusters by referencing a `Credential` name — **without ever seeing the actual credentials**.
+    examples:
+      - q: "Why does k0rdent use a three-layer credential model?"
+        a: "To separate credential management from cluster deployment — engineers reference Credential names without accessing actual secrets."
+        rel:
+          - ["Secret", "Kubernetes object containing actual provider credentials"]
+          - ["ClusterIdentity", "Provider-specific object referencing a Secret"]
+          - ["Credential", "k0rdent CRD that makes credentials available for cluster deployment"]
+
+      - type: select
+        q: "Who should create the Secret and ClusterIdentity objects?"
+        options:
+          - text: "Any platform engineer"
+          - text: "The platform lead with credential access"
+            correct: true
+          - text: "k0rdent creates them automatically"
+          - text: "The cluster users"
+        labels: ["Quiz"]
+
+  - title: "The Four-Step Credential Process"
+    explanation: |
+      **Step 1: Create Secret + ClusterIdentity**
+      The platform lead creates the provider-specific Secret (containing actual credentials) and a ClusterIdentity referencing it.
+
+      **Step 2: Create Credential Object**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: my-aws-cred
+        namespace: kcm-system
+      spec:
+        description: "AWS credentials for dev clusters"
+        identityRef:
+          apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+          kind: AWSClusterStaticIdentity
+          name: aws-cluster-identity
+      ```
+
+      **Step 3: Reference in ClusterDeployment**
+      Engineers reference only the Credential name:
+      ```yaml
+      spec:
+        credential: my-aws-cred
+      ```
+
+      **Step 4: Optional Credential Propagation**
+      Credentials can be propagated to child cluster nodes as needed.
+    examples:
+      - q: "What does a Credential object contain?"
+        a: "A reference (identityRef) to a ClusterIdentity object, plus an optional description. It does NOT contain actual credentials."
+
+      - type: input
+        q: "In a ClusterDeployment, how do you specify which credentials to use?"
+        a:
+          - "spec.credential"
+          - "credential"
+        labels: ["Quiz"]
+
+  - title: "SSH Credentials for Hetzner (Remote Provider)"
+    explanation: |
+      For our Hetzner workshop, we use SSH key credentials. Here's the setup:
+
+      **Create the SSH key Secret:**
+      ```bash
+      # Set variables
+      KEY_PATH=~/.ssh/id_ed25519
+      PRIVATE_SSH_KEY_B64=$(cat $KEY_PATH | base64 -w 0)
+      ```
+
+      ```yaml
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: remote-ssh-key
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+      type: Opaque
+      data:
+        value: <base64-encoded-private-key>
+      ```
+
+      **Create the Credential:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: remote-cred
+        namespace: kcm-system
+      spec:
+        identityRef:
+          apiVersion: v1
+          kind: Secret
+          name: remote-ssh-key
+          namespace: kcm-system
+      ```
+
+      For the remote/SSH provider, the Credential directly references the Secret (no intermediate ClusterIdentity needed).
+    examples:
+      - q: "How is the SSH private key stored in the Secret?"
+        a: "Base64-encoded in the 'value' field of an Opaque Secret."
+        rel:
+          - ["remote-ssh-key", "Secret containing the base64-encoded SSH private key"]
+          - ["remote-cred", "Credential object for SSH-based remote deployments"]
+
+      - type: select
+        q: "For the remote/SSH provider, does the Credential need a ClusterIdentity?"
+        options:
+          - text: "Yes, always"
+          - text: "No — it directly references the SSH key Secret"
+            correct: true
+          - text: "Only for production clusters"
+        labels: ["Quiz"]
+
+  - title: "Checking Existing Credentials"
+    explanation: |
+      Before creating new credentials, check what's already available:
+
+      ```bash
+      # List all credentials across namespaces
+      kubectl get credentials --all-namespaces
+
+      # Describe a specific credential
+      kubectl describe credential remote-cred -n kcm-system
+      ```
+
+      Credentials are namespace-scoped. The `kcm-system` namespace is where system-wide credentials typically live.
+    examples:
+      - q: "How do you list all credentials in the cluster?"
+        a: "kubectl get credentials --all-namespaces"
+
+  - title: "RBAC in k0rdent"
+    explanation: |
+      k0rdent provides **Role Based Access Control** following the principle of least privilege:
+
+      | Concept | Purpose |
+      |---------|---------|
+      | **Roles** | Define what actions can be performed on which resources |
+      | **AccessManagement** | CRD that defines access rules and target namespaces |
+      | **AccessRules** | Specify which templates and resources are available in which namespaces |
+      | **TargetNamespaces** | Define where resources get distributed |
+
+      The `AccessManagement` object controls which `ClusterTemplateChain` and `ServiceTemplateChain` objects are available in each namespace, effectively controlling what clusters and services each team can deploy.
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: AccessManagement
+      metadata:
+        name: access-config
+      spec:
+        accessRules:
+          - clusterTemplateChains:
+              - name: aws-standalone-cp
+            serviceTemplateChains:
+              - name: ingress-nginx
+            targetNamespaces:
+              selector:
+                matchLabels:
+                  team: dev
+      ```
+    examples:
+      - q: "What does AccessManagement control in k0rdent?"
+        a: "It defines which templates (via TemplateChains) are available in which namespaces, controlling what each team can deploy."
+        rel:
+          - ["AccessManagement", "CRD for defining access rules and resource distribution"]
+          - ["AccessRules", "Specify which templates are available in which namespaces"]
+          - ["TargetNamespaces", "Define namespaces where resources get distributed"]
+
+      - type: select
+        q: "How do you restrict a team to only use specific ClusterTemplates?"
+        options:
+          - text: "Delete the templates they shouldn't use"
+          - text: "Use AccessManagement with AccessRules targeting their namespace"
+            correct: true
+          - text: "Set filesystem permissions on the template files"
+          - text: "Use Kubernetes NetworkPolicies"
+        labels: ["Quiz"]

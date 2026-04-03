@@ -1,0 +1,223 @@
+version: 2
+number: 7
+title: "Managing Cluster Lifecycle"
+description: "Update clusters, enable drift detection, adopt existing clusters, and tear down deployments."
+
+sections:
+  - title: "Updating a Cluster"
+    explanation: |
+      k0rdent uses an **immutable template** approach for cluster updates. Instead of modifying a ClusterDeployment directly, you change the template it references:
+
+      ```bash
+      kubectl patch clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system \
+        --patch '{"spec":{"template":"remote-cluster-1-0-22"}}' \
+        --type=merge
+      ```
+
+      k0rdent detects the template change and automatically reconciles the cluster to match the new configuration.
+
+      **Verify the update:**
+      ```bash
+      kubectl get clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system
+
+      # Detailed status
+      kubectl get clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system -o=yaml
+      ```
+    examples:
+      - q: "How do you update a cluster in k0rdent?"
+        a: "Patch the ClusterDeployment to reference a new ClusterTemplate version. k0rdent reconciles the cluster automatically."
+        rel:
+          - ["Reconciliation", "Process where k0rdent detects desired vs actual state and makes changes"]
+
+      - type: select
+        q: "What triggers a cluster update in k0rdent?"
+        options:
+          - text: "Running a kubectl upgrade command"
+          - text: "Changing the template reference in the ClusterDeployment"
+            correct: true
+          - text: "Restarting the management cluster"
+          - text: "Editing the ClusterTemplate directly"
+        labels: ["Quiz"]
+
+  - title: "Template Chain Constraints"
+    explanation: |
+      Not all template transitions are allowed. **ClusterTemplateChains** define valid upgrade paths:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplateChain
+      metadata:
+        name: remote-cluster
+      spec:
+        supportedTemplates:
+          - name: remote-cluster-1-0-22
+          - name: remote-cluster-1-0-19
+            availableUpgrades:
+              - name: remote-cluster-1-0-22
+      ```
+
+      This means you can upgrade from `1-0-19` to `1-0-22`, but not skip versions or downgrade arbitrarily.
+
+      Check available chains:
+      ```bash
+      kubectl get clustertemplatechain -n kcm-system
+      ```
+    examples:
+      - q: "What happens if you try to patch a ClusterDeployment with an unsupported template?"
+        a: "The update is rejected because the upgrade path is not defined in the ClusterTemplateChain."
+
+  - title: "Drift Detection"
+    explanation: |
+      Drift detection monitors deployed resources and automatically corrects unauthorized changes:
+
+      **Enable drift detection** by setting `syncMode` in your deployment:
+
+      ```yaml
+      spec:
+        serviceSpec:
+          syncMode: ContinuousWithDriftDetection
+      ```
+
+      **Available sync modes:**
+
+      | Mode | Behavior |
+      |------|----------|
+      | `OneTime` | Deploy once, ignore subsequent changes |
+      | `Continuous` | Deploy and apply configuration changes automatically |
+      | `ContinuousWithDriftDetection` | Monitor for drift and auto-reconcile |
+      | `DryRun` | Generate reports without applying changes |
+
+      When drift is detected, k0rdent's drift-detection-manager updates the `ResourceSummary`, triggering the addon-controller to reconcile and redeploy.
+    examples:
+      - q: "What does ContinuousWithDriftDetection do?"
+        a: "It monitors deployed resources using hash values and automatically reconciles any unauthorized changes back to the desired state."
+        rel:
+          - ["syncMode", "Controls how k0rdent handles deployed resource changes"]
+          - ["ContinuousWithDriftDetection", "Sync mode that auto-corrects configuration drift"]
+          - ["ResourceSummary", "Object tracking resource state for drift detection"]
+
+      - type: select
+        q: "You want to deploy a service once and never update it automatically. Which syncMode?"
+        options:
+          - text: "Continuous"
+          - text: "OneTime"
+            correct: true
+          - text: "ContinuousWithDriftDetection"
+          - text: "DryRun"
+        labels: ["Quiz"]
+
+  - title: "Drift Ignore and Exclusions"
+    explanation: |
+      Sometimes you want to exclude specific resources or fields from drift correction:
+
+      **Drift Ignore** — exclude entire resources:
+      ```yaml
+      spec:
+        serviceSpec:
+          driftIgnore:
+            - apiVersion: v1
+              kind: ConfigMap
+              name: my-config
+              namespace: default
+      ```
+
+      Ignored resources receive the annotation `projectsveltos.io/driftDetectionIgnore: ok`.
+
+      **Drift Exclusions** — exclude specific fields:
+      ```yaml
+      spec:
+        serviceSpec:
+          driftExclusions:
+            - target:
+                kind: Deployment
+                name: my-app
+              paths:
+                - "/spec/replicas"
+      ```
+
+      This allows the HPA to change replica counts without triggering drift correction.
+    examples:
+      - q: "How do you prevent drift detection from reverting HPA-managed replica changes?"
+        a: "Use driftExclusions to exclude the /spec/replicas path from drift detection for that Deployment."
+        rel:
+          - ["driftIgnore", "Excludes entire resources from drift correction"]
+          - ["driftExclusions", "Excludes specific JSON paths from drift detection"]
+
+  - title: "Adopting Existing Clusters"
+    explanation: |
+      You can bring existing Kubernetes clusters under k0rdent management:
+
+      **Prerequisites:**
+      - Kubeconfig for the target cluster
+      - Network connectivity between management and target clusters
+
+      **Steps:**
+      1. Create a Credential for the target cluster's infrastructure
+      2. Create a ClusterDeployment using the `adopted-cluster` template:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterDeployment
+      metadata:
+        name: adopted-production
+        namespace: kcm-system
+      spec:
+        template: adopted-cluster-<version>
+        credential: target-cred
+        dryRun: false
+        config: {}
+      ```
+
+      3. Apply and verify:
+      ```bash
+      kubectl apply -f adopted-cluster.yaml
+      kubectl get clusterdeployment.kcm adopted-production \
+        -n kcm-system -o=yaml
+      ```
+
+      The adopted cluster can now be monitored and managed like any k0rdent-deployed cluster.
+
+      **Tip:** Use `dryRun: true` first to validate the configuration.
+    examples:
+      - q: "Can k0rdent manage clusters it didn't create?"
+        a: "Yes — using the adopted-cluster template, you can bring existing clusters under k0rdent management."
+        rel:
+          - ["adopted-cluster", "Template for bringing existing clusters under k0rdent management"]
+
+      - type: select
+        q: "What should you do before adopting a production cluster?"
+        options:
+          - text: "Delete the existing cluster first"
+          - text: "Use dryRun: true to validate the configuration"
+            correct: true
+          - text: "Upgrade the cluster to the latest version"
+          - text: "Remove all workloads from the cluster"
+        labels: ["Quiz"]
+
+  - title: "Tearing Down a Cluster"
+    explanation: |
+      To delete a child cluster:
+
+      ```bash
+      kubectl delete ClusterDeployment my-hetzner-cluster -n kcm-system
+      ```
+
+      If you set `cleanupOnDeletion: true` in the spec, k0rdent will also clean up orphaned cloud resources (LoadBalancers, storage volumes).
+
+      **Warning:** This is a destructive operation. All workloads on the child cluster will be lost. Always back up important data first.
+    examples:
+      - q: "What happens to workloads when you delete a ClusterDeployment?"
+        a: "All workloads on the child cluster are lost. The cluster and its nodes are deprovisioned."
+
+      - type: select
+        q: "What does cleanupOnDeletion: true do?"
+        options:
+          - text: "Backs up the cluster before deletion"
+          - text: "Removes orphaned cloud resources like LoadBalancers and storage"
+            correct: true
+          - text: "Prevents accidental deletion"
+          - text: "Migrates workloads to another cluster"
+        labels: ["Quiz"]

@@ -1,0 +1,192 @@
+version: 2
+number: 3
+title: "Verifying & Exploring the Installation"
+description: "Confirm that k0rdent is fully operational by checking pods, templates, and the management object."
+
+sections:
+  - title: "Check KCM Pods"
+    explanation: |
+      Wait 5-10 minutes after installation, then verify all pods in the `kcm-system` namespace are running:
+
+      ```bash
+      kubectl get pods -n kcm-system
+      ```
+
+      You should see approximately **26 pods** running, including:
+
+      | Pod | Purpose |
+      |-----|---------|
+      | `azureserviceoperator-*` | Azure provider |
+      | `capa-*` | AWS provider (CAPA) |
+      | `capi-*` | Core Cluster API |
+      | `capg-*` | GCP provider |
+      | `capo-*` | OpenStack provider |
+      | `capv-*` | vSphere provider |
+      | `capz-*` | Azure provider (CAPZ) |
+      | `helm-controller-*` | Flux Helm controller |
+      | `kcm-cert-manager-*` | Certificate management |
+      | `kcm-controller-manager-*` | Main KCM controller |
+      | `k0smotron-*` | Hosted control planes |
+      | `source-controller-*` | Flux source controller |
+
+      **Troubleshooting:** If pods show restarts or `CrashLoopBackOff`, use `kubectl describe pod <name> -n kcm-system` to investigate. Often, just waiting longer resolves timing issues.
+    examples:
+      - q: "How many pods should be running in kcm-system?"
+        a: "Approximately 26 pods, including CAPI controllers, provider controllers, Flux controllers, and cert-manager."
+        rel:
+          - ["kcm-system", "Namespace where all k0rdent control plane components run"]
+          - ["CAPI controller", "Core Cluster API controller for cluster lifecycle"]
+          - ["Flux controllers", "GitOps controllers for Helm and source management"]
+
+      - type: input
+        q: "What command lists all pods in the kcm-system namespace?"
+        a:
+          - "kubectl get pods -n kcm-system"
+        labels: ["Quiz"]
+
+  - title: "Check KSM Pods (ProjectSveltos)"
+    explanation: |
+      k0rdent's State Manager uses ProjectSveltos. Check its pods:
+
+      ```bash
+      kubectl get pods -n projectsveltos
+      ```
+
+      You should see approximately **10 pods** running:
+
+      - `access-manager` — manages access controls
+      - `addon-controller` — deploys services to child clusters
+      - `classifier-manager` — classifies clusters
+      - `event-manager` — handles events
+      - `healthcheck-manager` — monitors health
+      - `shard-controller` — manages sharding
+      - `sc-manager` — service catalog manager
+      - `conversion-webhook` — API version conversions
+      - `drift-detection-manager` — detects config drift
+      - `sveltos-agent-manager` — agent management
+    examples:
+      - q: "What namespace does ProjectSveltos run in?"
+        a: "projectsveltos"
+        rel:
+          - ["projectsveltos", "Namespace for the KSM/Sveltos service management pods"]
+          - ["addon-controller", "Sveltos component that deploys services to child clusters"]
+          - ["drift-detection-manager", "Detects configuration drift in managed clusters"]
+
+      - type: select
+        q: "Which component deploys services to child clusters?"
+        options:
+          - text: "classifier-manager"
+          - text: "addon-controller"
+            correct: true
+          - text: "shard-controller"
+          - text: "access-manager"
+        labels: ["Quiz"]
+
+  - title: "Verify Provider Templates"
+    explanation: |
+      ProviderTemplates define which infrastructure providers are available. Verify they're all valid:
+
+      ```bash
+      kubectl get providertemplate -n kcm-system
+      ```
+
+      All templates should show `VALID: true`. You'll see templates for:
+      - `cluster-api` — core CAPI
+      - `cluster-api-provider-aws` — AWS
+      - `cluster-api-provider-azure` — Azure
+      - `cluster-api-provider-gcp` — GCP
+      - `cluster-api-provider-openstack` — OpenStack
+      - `cluster-api-provider-vsphere` — vSphere
+      - `k0smotron` — hosted control planes
+      - `kcm` — k0rdent itself
+      - `projectsveltos` — service management
+    examples:
+      - q: "What does VALID: true mean for a ProviderTemplate?"
+        a: "The template has been successfully validated — its Helm chart is accessible, providers are recognized, and it's ready to use."
+        rel:
+          - ["ProviderTemplate", "CRD that exposes CAPI providers for infrastructure, bootstrap, and control plane operations"]
+
+      - type: input
+        q: "What command lists all provider templates?"
+        a:
+          - "kubectl get providertemplate -n kcm-system"
+        labels: ["Quiz"]
+
+  - title: "Verify Cluster Templates"
+    explanation: |
+      ClusterTemplates are blueprints for creating clusters. Check the pre-installed ones:
+
+      ```bash
+      kubectl get clustertemplate -n kcm-system
+      ```
+
+      You'll see templates for different providers and topologies:
+
+      | Template Pattern | Description |
+      |-----------------|-------------|
+      | `aws-standalone-cp-*` | AWS standalone cluster |
+      | `aws-eks-*` | AWS EKS managed cluster |
+      | `aws-hosted-cp-*` | AWS hosted control plane |
+      | `azure-standalone-cp-*` | Azure standalone cluster |
+      | `azure-aks-*` | Azure AKS managed cluster |
+      | `gcp-standalone-cp-*` | GCP standalone cluster |
+      | `remote-cluster-*` | Remote/SSH cluster |
+
+      All should show `VALID: true`.
+    examples:
+      - q: "What is a ClusterTemplate?"
+        a: "A reusable, immutable blueprint that defines the configuration, components, and characteristics of a Kubernetes cluster."
+        rel:
+          - ["ClusterTemplate", "Immutable blueprint for defining cluster configurations"]
+          - ["standalone", "Cluster topology where control plane runs on dedicated nodes"]
+          - ["hosted", "Cluster topology where control plane runs as pods in the management cluster"]
+
+      - type: multiple-choice
+        q: "Which of these are valid ClusterTemplate types? (Select all)"
+        options:
+          - text: "aws-standalone-cp"
+            correct: true
+          - text: "azure-hosted-cp"
+            correct: true
+          - text: "remote-cluster"
+            correct: true
+          - text: "docker-local-cp"
+        labels: ["Quiz"]
+
+  - title: "Verify the Management Object"
+    explanation: |
+      The final check — verify the Management object is ready:
+
+      ```bash
+      kubectl get management -n kcm-system
+      ```
+
+      Expected output:
+      ```
+      NAME   READY   RELEASE
+      kcm    True    kcm-1-8-0
+      ```
+
+      `READY: True` confirms k0rdent is fully operational. If it shows `False`, wait a few more minutes and check pod logs for errors.
+
+      For more details:
+      ```bash
+      kubectl get management kcm -n kcm-system -o yaml
+      ```
+
+      This shows the complete status including all managed components and their versions.
+    examples:
+      - q: "What does the Management object represent?"
+        a: "The core management-related configuration within k0rdent. READY: True confirms everything is operational."
+        rel:
+          - ["Management", "CRD representing the overall k0rdent management configuration and status"]
+
+      - type: select
+        q: "Your management object shows READY: False. What should you do first?"
+        options:
+          - text: "Reinstall k0rdent immediately"
+          - text: "Wait a few more minutes and check pod logs"
+            correct: true
+          - text: "Delete the management object"
+          - text: "Reboot the server"
+        labels: ["Quiz"]

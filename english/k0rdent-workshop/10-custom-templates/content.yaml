@@ -1,0 +1,232 @@
+version: 2
+number: 10
+title: "Creating Custom Templates"
+description: "Build, package, and deploy your own ClusterTemplates and ServiceTemplates."
+
+sections:
+  - title: "Why Custom Templates?"
+    explanation: |
+      While k0rdent ships with many pre-built templates, you'll often need custom ones:
+
+      - **Organization-specific defaults** — custom instance types, networking, regions
+      - **Security hardening** — pre-configured security policies
+      - **Standardization** — enforce consistent cluster configurations
+      - **Custom providers** — support non-standard infrastructure
+
+      Custom templates follow the same structure as built-in ones — they're Helm charts containing CAPI resources.
+    examples:
+      - q: "When would you need a custom ClusterTemplate?"
+        a: "When you need organization-specific defaults, security hardening, standardized configs, or support for non-standard infrastructure."
+
+  - title: "ClusterTemplate Structure"
+    explanation: |
+      A ClusterTemplate wraps a Helm chart with this structure:
+
+      ```
+      my-custom-template/
+      ├── Chart.yaml          # Chart metadata
+      ├── values.yaml         # Default parameters
+      ├── values.schema.json  # Parameter validation
+      └── templates/          # CAPI Kubernetes manifests
+          ├── cluster.yaml
+          ├── controlplane.yaml
+          ├── machinedeployment.yaml
+          └── ...
+      ```
+
+      The `templates/` directory contains CAPI objects (Machine, Cluster, MachineDeployment) that use `{{ .Values.xxx }}` for parameterization.
+
+      **Starting point:** Clone an existing template from the [k0rdent GitHub repository](https://github.com/k0rdent/kcm/tree/main/templates/cluster) or download from the OCI registry.
+    examples:
+      - q: "What's inside a ClusterTemplate Helm chart?"
+        a: "Chart.yaml, values.yaml, values.schema.json, and a templates/ directory containing CAPI Kubernetes manifests."
+        rel:
+          - ["Chart.yaml", "Helm chart metadata (name, version, description)"]
+          - ["values.yaml", "Default configuration parameters"]
+          - ["values.schema.json", "JSON Schema for parameter validation"]
+
+  - title: "Modifying an Existing Template"
+    explanation: |
+      The easiest approach is to modify an existing template:
+
+      **Step 1: Inspect the chart**
+      Examine how `values.yaml` is referenced in the templates. For example, `.Values.controlPlaneNumber` controls control plane node count.
+
+      **Step 2: Customize values.yaml**
+      ```yaml
+      # values.yaml
+      clusterName: ""
+      controlPlaneNumber: 3
+      workerNumber: 3
+      controlPlane:
+        instanceType: t3.medium
+        rootVolumeSize: 50
+      worker:
+        instanceType: t3.large
+        rootVolumeSize: 100
+      region: eu-central-1
+      ```
+
+      **Step 3: Update Chart.yaml**
+      ```yaml
+      apiVersion: v2
+      name: custom-aws-standalone-cp
+      version: 1.0.0
+      description: "Custom AWS standalone with org defaults"
+      annotations:
+        cluster.x-k8s.io/provider: >-
+          infrastructure-aws, control-plane-k0sproject-k0smotron
+      ```
+
+      **Step 4: Package and push**
+      ```bash
+      helm package ./my-custom-template
+      helm push custom-aws-standalone-cp-1.0.0.tgz \
+        oci://registry.example.com/templates
+      ```
+    examples:
+      - q: "How do you identify customizable parameters in a template?"
+        a: "Look for {{ .Values.xxx }} references in the templates/ directory — each one corresponds to a parameter in values.yaml."
+
+      - type: select
+        q: "After modifying a template chart, what do you do?"
+        options:
+          - text: "Apply it directly with kubectl"
+          - text: "Package with helm package and push to a registry"
+            correct: true
+          - text: "Restart the management cluster"
+          - text: "Edit the ClusterTemplate CRD directly"
+        labels: ["Quiz"]
+
+  - title: "Registering Custom Templates"
+    explanation: |
+      After packaging your chart, register it with k0rdent:
+
+      **Step 1: Create a Flux source object:**
+      ```yaml
+      apiVersion: source.toolkit.fluxcd.io/v1
+      kind: HelmRepository
+      metadata:
+        name: custom-repo
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/managed: "true"
+      spec:
+        url: oci://registry.example.com/templates
+        type: oci
+        interval: 10m
+      ```
+
+      **Step 2: Create the ClusterTemplate:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplate
+      metadata:
+        name: custom-aws-standalone
+        namespace: kcm-system
+      spec:
+        helm:
+          chartSpec:
+            chart: custom-aws-standalone-cp
+            version: 1.0.0
+            interval: 10m
+            sourceRef:
+              kind: HelmRepository
+              name: custom-repo
+      ```
+
+      **Step 3: Verify:**
+      ```bash
+      kubectl get clustertemplate custom-aws-standalone -n kcm-system
+      ```
+
+      It should show `VALID: true` once the chart is fetched and validated.
+    examples:
+      - q: "What two objects do you need to register a custom template?"
+        a: "A Flux source object (HelmRepository, GitRepository, or OCIRepository) and the ClusterTemplate CRD."
+
+  - title: "Custom ServiceTemplates"
+    explanation: |
+      Creating custom ServiceTemplates follows a similar pattern:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplate
+      metadata:
+        name: my-monitoring-stack-1.0.0
+        namespace: kcm-system
+      spec:
+        k8sConstraint: ">=1.28.0 <1.32.0"
+        helm:
+          chartSpec:
+            chart: kube-prometheus-stack
+            version: 62.3.0
+            interval: 10m0s
+            sourceRef:
+              kind: HelmRepository
+              name: prometheus-community
+        helmOptions:
+          wait: true
+          timeout: 10m
+          createNamespace: true
+      ```
+
+      Key additions:
+      - `k8sConstraint` — ensures the service only deploys on compatible clusters
+      - `helmOptions` — controls installation behavior (wait, timeout, atomic, etc.)
+
+      **ServiceTemplateChain** for upgrade paths:
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplateChain
+      metadata:
+        name: my-monitoring-stack
+      spec:
+        supportedTemplates:
+          - name: my-monitoring-stack-1.0.0
+          - name: my-monitoring-stack-0.9.0
+            availableUpgrades:
+              - name: my-monitoring-stack-1.0.0
+      ```
+    examples:
+      - q: "How do you restrict a ServiceTemplate to specific Kubernetes versions?"
+        a: "Set spec.k8sConstraint with a semver constraint like '>=1.28.0 <1.32.0'."
+
+      - type: multiple-choice
+        q: "Which helmOptions are available on ServiceTemplates? (Select all)"
+        options:
+          - text: "wait — wait for resources to be ready"
+            correct: true
+          - text: "atomic — rollback on failure"
+            correct: true
+          - text: "autoScale — enable HPA"
+          - text: "createNamespace — create namespace if missing"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "Template Validation and Troubleshooting"
+    explanation: |
+      If a template shows `VALID: false`, investigate:
+
+      ```bash
+      # Check validation error
+      kubectl get clustertemplate custom-template \
+        -n kcm-system -o jsonpath='{.status.validationError}'
+
+      # Check Flux source status
+      kubectl get helmrepository custom-repo -n kcm-system
+
+      # Check if providers are installed
+      kubectl get providertemplate -n kcm-system
+      ```
+
+      **Common issues:**
+      - **Missing providers** — template references providers that aren't installed
+      - **Schema violations** — values don't match the JSON schema
+      - **Source errors** — Flux can't fetch the chart from the repository
+      - **Version conflicts** — provider contract versions don't match
+    examples:
+      - q: "Your custom template shows VALID: false. What's the first thing to check?"
+        a: "Check .status.validationError for the specific error message, then verify the Flux source and installed providers."
+        rel:
+          - ["validationError", "Status field showing why a template failed validation"]
