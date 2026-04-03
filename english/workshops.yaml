@@ -5,4 +5,4 @@ workshops:
     description: "Hands-on workshop for platform engineers and admins. Set up a dev cluster with k0rdent on Hetzner, manage templates, services, and multi-cluster deployments."
     color: "220 45% 92%"
     primaryColor: "220 75% 45%"
-    labels: ["Kubernetes", "Platform Engineering", "Advanced"]
+    labels: ["IT", "Kubernetes", "Platform Engineering", "Advanced"]
