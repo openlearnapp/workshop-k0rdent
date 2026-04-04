@@ -16,22 +16,14 @@
     .lang-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 
     /* Header */
-    .header h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-    .header .description { color: var(--muted); margin-bottom: 0.5rem; }
+    .header h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
 
     /* Labels */
     .labels { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem; }
     .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #eff6ff; color: var(--accent); }
 
-    /* CTA */
-    .cta { margin: 1.25rem 0 1.5rem; }
-    .cta a { display: inline-block; padding: 12px 32px; background: var(--accent); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 1rem; }
-    .cta a:hover { background: var(--accent-hover); }
-
-    /* Markdown content — strip first h1, description paragraph, and start blockquote */
+    /* Markdown content — hide h1 (shown from YAML for language switching) */
     #readme h1 { display: none; }
-    #readme > p:first-of-type { display: none; }
-    #readme > blockquote:first-of-type { display: none; }
     #readme h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
     #readme h3 { font-size: 1rem; margin: 1.25rem 0 0.4rem; }
     #readme p { margin: 0.5rem 0; }
@@ -59,7 +51,6 @@
   <div id="lang-picker"></div>
   <div id="header" class="header"></div>
   <div id="labels"></div>
-  <div id="cta" class="cta"></div>
   <div id="readme" class="loading">Loading…</div>
   <div id="changelog"></div>
   <footer>
@@ -77,12 +68,9 @@
 
     const path = location.pathname.replace(/\/$/, '')
     const workshopName = path.split('/').pop() || 'workshop'
-    const baseUrl = location.origin + path
-    const addUrl = `https://open-learn.app/#/add?source=${encodeURIComponent(baseUrl + '/index.yaml')}`
     const ghUrl = `https://github.com/openlearnapp/${workshopName}`
 
     document.getElementById('gh-link').href = ghUrl
-    document.getElementById('cta').innerHTML = `<a href="${addUrl}">Start Workshop</a>`
 
     let workshopData = {}
 
@@ -102,8 +90,7 @@
       )
 
       document.getElementById('header').innerHTML =
-        `<h1>${ws.title || workshopName}</h1>` +
-        (ws.description ? `<p class="description">${ws.description}</p>` : '')
+        `<h1>${ws.title || workshopName}</h1>`
 
       document.title = (ws.title || workshopName) + ' – Open Learn Workshop'
 
