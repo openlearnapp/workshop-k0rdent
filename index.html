@@ -9,11 +9,18 @@
     * { box-sizing: border-box; margin: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; max-width: 640px; margin: 0 auto; padding: 40px 20px 60px; color: var(--text); background: var(--bg); line-height: 1.6; }
     /* CTA bar */
-    .cta { text-align: center; margin-bottom: 2rem; padding: 1.5rem; background: #f8fafc; border-radius: 12px; }
-    .cta a { display: inline-block; padding: 12px 32px; background: var(--accent); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 1rem; }
-    .cta a:hover { background: var(--accent-hover); }
+    .cta { text-align: center; margin: 1.5rem 0; padding: 1.5rem; background: #f8fafc; border-radius: 12px; }
+    .cta a.btn { display: inline-block; padding: 12px 32px; background: var(--accent); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 1rem; }
+    .cta a.btn:hover { background: var(--accent-hover); }
     .cta .source { display: block; margin-top: 0.5rem; font-size: 0.75rem; color: var(--muted); }
-    .cta .source a { display: inline; padding: 0; background: none; color: var(--muted); font-weight: normal; text-decoration: underline; }
+    .cta .source a { color: var(--muted); text-decoration: underline; }
+    /* Meta info (languages, labels) */
+    .meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; align-items: center; }
+    .meta-group { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+    .meta-label { font-size: 0.75rem; color: var(--muted); margin-right: 0.25rem; }
+    .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+    .badge-lang { background: #f0fdf4; color: #166534; }
+    .badge-tag { background: #eff6ff; color: #2563eb; }
     /* Markdown content */
     #readme h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
     #readme h2 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
@@ -35,18 +42,18 @@
     footer a { color: var(--muted); }
     .loading { text-align: center; padding: 2rem; color: var(--muted); }
   </style>
-  <!-- marked.js for markdown rendering (4KB gzipped) -->
   <script src="https://cdn.jsdelivr.net/npm/marked@15/lib/marked.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
 </head>
 <body>
   <div id="readme" class="loading">Loading…</div>
+  <div id="meta"></div>
   <div id="changelog"></div>
   <footer>
     <a id="gh-link" href="#">GitHub</a> · Powered by <a href="https://open-learn.app">Open Learn</a>
   </footer>
 
   <script>
-    // Derive workshop name and URLs from current location
     const path = location.pathname.replace(/\/$/, '')
     const workshopName = path.split('/').pop() || 'workshop'
     const baseUrl = location.origin + path
@@ -56,39 +63,81 @@
 
     document.getElementById('gh-link').href = ghUrl
 
+    async function fetchYaml(url) {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) return null
+        return jsyaml.load(await res.text())
+      } catch { return null }
+    }
+
     async function render() {
       const readmeEl = document.getElementById('readme')
+      const metaEl = document.getElementById('meta')
       const changelogEl = document.getElementById('changelog')
 
-      // Fetch and render README.md
-      try {
-        const res = await fetch('README.md')
-        if (!res.ok) throw new Error('No README.md')
-        const md = await res.text()
-        readmeEl.innerHTML = marked.parse(md)
-        // Set page title from first h1
+      // Fetch README, index.yaml, and first language's workshops.yaml in parallel
+      const [readmeRes, indexData] = await Promise.all([
+        fetch('README.md').then(r => r.ok ? r.text() : null).catch(() => null),
+        fetchYaml('index.yaml')
+      ])
+
+      // Render README
+      if (readmeRes) {
+        readmeEl.innerHTML = marked.parse(readmeRes)
         const h1 = readmeEl.querySelector('h1')
         if (h1) document.title = h1.textContent + ' – Open Learn Workshop'
-      } catch {
+      } else {
         readmeEl.innerHTML = `<h1>${workshopName}</h1><p>Workshop for <a href="https://open-learn.app">Open Learn</a></p>`
         document.title = workshopName + ' – Open Learn Workshop'
       }
 
-      // Insert CTA after the first element
+      // Insert CTA after first element (title + description)
       const cta = document.createElement('div')
       cta.className = 'cta'
-      cta.innerHTML = `<a href="${addUrl}">Start Workshop</a><span class="source">or add manually: <a href="${addUrl}">${baseUrl}/index.yaml</a></span>`
-      const firstChild = readmeEl.children[1] || readmeEl.firstElementChild
-      if (firstChild) readmeEl.insertBefore(cta, firstChild.nextSibling)
+      cta.innerHTML = `<a class="btn" href="${addUrl}">Start Workshop</a><span class="source">or add: <a href="${addUrl}">${baseUrl}/index.yaml</a></span>`
+      const insertAfter = readmeEl.children[1] || readmeEl.firstElementChild
+      if (insertAfter) readmeEl.insertBefore(cta, insertAfter.nextSibling)
       else readmeEl.appendChild(cta)
+
+      // Load metadata from YAML files
+      if (indexData?.languages) {
+        const languages = indexData.languages.map(l => typeof l === 'string' ? l : l.folder)
+        let labels = []
+
+        // Try to get labels from first language's workshops.yaml
+        const firstLang = languages[0]
+        if (firstLang) {
+          const wsData = await fetchYaml(`${firstLang}/workshops.yaml`) || await fetchYaml(`${firstLang}/topics.yaml`)
+          const workshops = wsData?.workshops || wsData?.topics || []
+          for (const ws of workshops) {
+            if (ws.labels) labels.push(...ws.labels)
+          }
+          labels = [...new Set(labels)]
+        }
+
+        // Render meta badges
+        let html = ''
+        if (languages.length > 0) {
+          html += `<div class="meta-group"><span class="meta-label">Languages:</span>${languages.map(l => `<span class="badge badge-lang">${l}</span>`).join('')}</div>`
+        }
+        if (labels.length > 0) {
+          html += `<div class="meta-group"><span class="meta-label">Labels:</span>${labels.map(l => `<span class="badge badge-tag">${l}</span>`).join('')}</div>`
+        }
+        if (html) {
+          metaEl.className = 'meta'
+          metaEl.innerHTML = html
+          // Insert meta after CTA
+          cta.after(metaEl)
+        }
+      }
 
       // Fetch and render CHANGELOG.md
       try {
         const res = await fetch('CHANGELOG.md')
         if (!res.ok) return
-        const md = await res.text()
-        changelogEl.innerHTML = marked.parse(md)
-      } catch { /* no changelog, that's fine */ }
+        changelogEl.innerHTML = marked.parse(await res.text())
+      } catch {}
     }
 
     render()

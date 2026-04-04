@@ -18,10 +18,6 @@ A hands-on workshop for platform engineers and admins. Set up a dev cluster with
 10. **Creating Custom Templates** — Build your own templates
 11. **Backup, Restore & Observability** — Day-2 operations
 
-## Labels
-
-`IT` · `Kubernetes` · `Platform Engineering` · `Advanced`
-
 ## Links
 
 - [k0rdent Project](https://k0rdent.io)
