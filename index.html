@@ -3,64 +3,95 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>k0rdent Workshop – Open Learn</title>
+  <title>Loading… – Open Learn Workshop</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 60px auto; padding: 0 20px; color: #1e293b; }
-    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; text-align: center; }
-    .subtitle { color: #64748b; text-align: center; margin-bottom: 2rem; }
-    .cta { text-align: center; margin-bottom: 2.5rem; }
-    .cta a { display: inline-block; padding: 12px 32px; background: #2563eb; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; }
-    .cta a:hover { background: #1d4ed8; }
-    .labels { text-align: center; margin-bottom: 2rem; }
-    .label { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 3px 10px; border-radius: 12px; background: #eff6ff; color: #2563eb; margin: 2px; }
-    h2 { font-size: 1.1rem; margin: 2rem 0 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
-    ol { padding-left: 1.25rem; }
-    li { font-size: 0.9rem; color: #475569; line-height: 1.8; }
-    li strong { color: #1e293b; }
-    footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; text-align: center; font-size: 0.8rem; color: #94a3b8; }
-    footer a { color: #64748b; }
+    :root { --accent: #2563eb; --accent-hover: #1d4ed8; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; --bg: #ffffff; }
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 640px; margin: 0 auto; padding: 40px 20px 60px; color: var(--text); background: var(--bg); line-height: 1.6; }
+    /* CTA bar */
+    .cta { text-align: center; margin-bottom: 2rem; padding: 1.5rem; background: #f8fafc; border-radius: 12px; }
+    .cta a { display: inline-block; padding: 12px 32px; background: var(--accent); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 1rem; }
+    .cta a:hover { background: var(--accent-hover); }
+    .cta .source { display: block; margin-top: 0.5rem; font-size: 0.75rem; color: var(--muted); }
+    .cta .source a { display: inline; padding: 0; background: none; color: var(--muted); font-weight: normal; text-decoration: underline; }
+    /* Markdown content */
+    #readme h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    #readme h2 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+    #readme h3 { font-size: 1rem; margin: 1.25rem 0 0.4rem; }
+    #readme p { margin: 0.5rem 0; }
+    #readme blockquote { margin: 0.5rem 0; padding: 0.5rem 1rem; border-left: 3px solid var(--border); color: var(--muted); font-size: 0.9rem; }
+    #readme blockquote a { color: var(--accent); }
+    #readme ul, #readme ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+    #readme li { margin: 0.25rem 0; }
+    #readme code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+    #readme a { color: var(--accent); }
+    /* Changelog */
+    #changelog { margin-top: 2.5rem; }
+    #changelog h1, #changelog h2 { font-size: 1.1rem; margin: 1.5rem 0 0.4rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
+    #changelog ul { padding-left: 1.25rem; margin: 0.25rem 0; }
+    #changelog li { font-size: 0.85rem; color: #475569; line-height: 1.6; }
+    /* Footer */
+    footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border); text-align: center; font-size: 0.8rem; color: #94a3b8; }
+    footer a { color: var(--muted); }
+    .loading { text-align: center; padding: 2rem; color: var(--muted); }
   </style>
+  <!-- marked.js for markdown rendering (4KB gzipped) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@15/lib/marked.umd.min.js"></script>
 </head>
 <body>
-  <h1>k0rdent Workshop</h1>
-  <p class="subtitle">Hands-on workshop for platform engineers and admins.</p>
-
-  <div class="labels">
-    <span class="label">Kubernetes</span>
-    <span class="label">Platform Engineering</span>
-    <span class="label">Advanced</span>
-  </div>
-
-  <div class="cta">
-    <a href="https://open-learn.app/#/add?source=https://open-learn.app/workshop-k0rdent">Start Workshop</a>
-  </div>
-
-  <h2>11 Lessons</h2>
-  <ol>
-    <li><strong>Welcome to k0rdent</strong> — Introduction and overview</li>
-    <li><strong>Setting Up the Management Cluster</strong> — Bootstrap on Hetzner</li>
-    <li><strong>Verifying the Installation</strong> — Check components and status</li>
-    <li><strong>The Templating System</strong> — Understand and use templates</li>
-    <li><strong>Credentials & Access</strong> — Configure access and secrets</li>
-    <li><strong>Deploying Your First Cluster</strong> — Create a managed cluster</li>
-    <li><strong>Cluster Lifecycle</strong> — Upgrades, scaling, operations</li>
-    <li><strong>Working with Services (KSM)</strong> — Kubernetes Service Manager</li>
-    <li><strong>Multi-Cluster & Hosted Control Planes</strong> — Advanced topologies</li>
-    <li><strong>Custom Templates</strong> — Build your own</li>
-    <li><strong>Backup, Restore & Observability</strong> — Day-2 operations</li>
-  </ol>
-
-  <h2>v1.0 <small style="color:#94a3b8; font-weight:normal">Apr 2026</small></h2>
-  <ul style="padding-left:1.25rem">
-    <li style="font-size:0.85rem;color:#475569;line-height:1.6">11 lessons covering full k0rdent platform lifecycle</li>
-    <li style="font-size:0.85rem;color:#475569;line-height:1.6">Interactive assessments (select, multiple-choice, text input)</li>
-    <li style="font-size:0.85rem;color:#475569;line-height:1.6">English interface</li>
-  </ul>
-
+  <div id="readme" class="loading">Loading…</div>
+  <div id="changelog"></div>
   <footer>
-    <a href="https://github.com/openlearnapp/workshop-k0rdent">GitHub</a> ·
-    <a href="https://k0rdent.io">k0rdent</a> ·
-    Powered by <a href="https://open-learn.app">Open Learn</a>
+    <a id="gh-link" href="#">GitHub</a> · Powered by <a href="https://open-learn.app">Open Learn</a>
   </footer>
+
+  <script>
+    // Derive workshop name and URLs from current location
+    const path = location.pathname.replace(/\/$/, '')
+    const workshopName = path.split('/').pop() || 'workshop'
+    const baseUrl = location.origin + path
+    const addUrl = `https://open-learn.app/#/add?source=${encodeURIComponent(baseUrl + '/index.yaml')}`
+    const ghOrg = 'openlearnapp'
+    const ghUrl = `https://github.com/${ghOrg}/${workshopName}`
+
+    document.getElementById('gh-link').href = ghUrl
+
+    async function render() {
+      const readmeEl = document.getElementById('readme')
+      const changelogEl = document.getElementById('changelog')
+
+      // Fetch and render README.md
+      try {
+        const res = await fetch('README.md')
+        if (!res.ok) throw new Error('No README.md')
+        const md = await res.text()
+        readmeEl.innerHTML = marked.parse(md)
+        // Set page title from first h1
+        const h1 = readmeEl.querySelector('h1')
+        if (h1) document.title = h1.textContent + ' – Open Learn Workshop'
+      } catch {
+        readmeEl.innerHTML = `<h1>${workshopName}</h1><p>Workshop for <a href="https://open-learn.app">Open Learn</a></p>`
+        document.title = workshopName + ' – Open Learn Workshop'
+      }
+
+      // Insert CTA after the first element
+      const cta = document.createElement('div')
+      cta.className = 'cta'
+      cta.innerHTML = `<a href="${addUrl}">Start Workshop</a><span class="source">or add manually: <a href="${addUrl}">${baseUrl}/index.yaml</a></span>`
+      const firstChild = readmeEl.children[1] || readmeEl.firstElementChild
+      if (firstChild) readmeEl.insertBefore(cta, firstChild.nextSibling)
+      else readmeEl.appendChild(cta)
+
+      // Fetch and render CHANGELOG.md
+      try {
+        const res = await fetch('CHANGELOG.md')
+        if (!res.ok) return
+        const md = await res.text()
+        changelogEl.innerHTML = marked.parse(md)
+      } catch { /* no changelog, that's fine */ }
+    }
+
+    render()
+  </script>
 </body>
 </html>

@@ -1,12 +1,11 @@
-# Workshop: k0rdent
-
-> **[🌐 Landing Page](https://open-learn.app/workshop-k0rdent/)** · **[🚀 Start Workshop](https://open-learn.app/#/add?source=https://open-learn.app/workshop-k0rdent)**
+# k0rdent Workshop
 
 A hands-on workshop for platform engineers and admins. Set up a dev cluster with k0rdent on Hetzner, manage templates, services, and multi-cluster deployments.
 
-## Content
+> **[🚀 Start Workshop](https://open-learn.app/#/add?source=https://open-learn.app/workshop-k0rdent)**
 
-### 11 Lessons
+## 11 Lessons
+
 1. **Welcome to k0rdent** — Introduction and overview
 2. **Setting Up the Management Cluster on Hetzner** — Bootstrap your first cluster
 3. **Verifying & Exploring the Installation** — Check components and status
@@ -21,10 +20,10 @@ A hands-on workshop for platform engineers and admins. Set up a dev cluster with
 
 ## Labels
 
-`Kubernetes` · `Platform Engineering` · `Advanced`
+`IT` · `Kubernetes` · `Platform Engineering` · `Advanced`
 
 ## Links
 
-- [Open Learn Platform](https://open-learn.app)
-- [Open Learn Repository](https://github.com/openlearnapp/openlearnapp.github.io)
 - [k0rdent Project](https://k0rdent.io)
+- [Open Learn Platform](https://open-learn.app)
+- [Open Learn GitHub](https://github.com/openlearnapp)
