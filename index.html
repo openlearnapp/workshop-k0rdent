@@ -139,8 +139,8 @@
         workshopData[lang] = ws
       }
 
-      // Render language picker (if more than 1 language)
-      if (languages.length > 1) {
+      // Render language picker (always shown for consistent layout)
+      if (languages.length > 0) {
         const picker = document.createElement('div')
         picker.className = 'lang-picker'
         for (const lang of languages) {
