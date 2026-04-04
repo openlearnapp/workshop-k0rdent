@@ -9,179 +9,193 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; max-width: 640px; margin: 0 auto; padding: 40px 20px 60px; color: var(--text); line-height: 1.6; }
 
-    /* Top bar: language dropdown + title */
     .top-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
-    .lang-dropdown { position: relative; flex-shrink: 0; }
-    .lang-toggle { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--accent); color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
-    .lang-toggle:hover { background: var(--accent-hover); }
-    .lang-toggle svg { opacity: 0.7; }
-    .lang-menu { display: none; position: absolute; top: 100%; left: 0; margin-top: 4px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; min-width: 160px; z-index: 10; }
-    .lang-menu.open { display: block; }
-    .lang-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: white; cursor: pointer; font-size: 0.85rem; text-align: left; color: var(--text); }
-    .lang-menu button:hover { background: #f1f5f9; }
-    .lang-menu button.active { background: #f1f5f9; font-weight: 600; }
     h1 { font-size: 1.5rem; }
-
     .description { color: var(--muted); margin: 0.5rem 0 0.75rem; }
     .labels { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem; }
-    .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #eff6ff; color: var(--accent); }
-
+    .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #eff6ff; color: var(--accent); cursor: default; }
     .cta { margin-bottom: 2rem; }
     .cta a { display: inline-block; padding: 10px 28px; background: var(--accent); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; }
     .cta a:hover { background: var(--accent-hover); }
-
     h2 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
     ol, ul { padding-left: 1.5rem; margin: 0.5rem 0; }
     li { margin: 0.25rem 0; }
-
-    #changelog h1, #changelog h2 { font-size: 1.05rem; margin: 1.5rem 0 0.4rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
-    #changelog ul { padding-left: 1.25rem; }
-    #changelog li { font-size: 0.85rem; color: #475569; }
-
+    .changelog h1, .changelog h2 { font-size: 1.05rem; margin: 1.5rem 0 0.4rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
+    .changelog ul { padding-left: 1.25rem; }
+    .changelog li { font-size: 0.85rem; color: #475569; }
     footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border); text-align: center; font-size: 0.8rem; color: #94a3b8; }
     footer a { color: var(--muted); }
     .loading { text-align: center; padding: 2rem; color: var(--muted); }
+
+    /* Language picker — matches Open Learn platform style */
+    .lang-picker { position: relative; flex-shrink: 0; }
+    .lang-picker-btn { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--accent); color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
+    .lang-picker-btn:hover { background: var(--accent-hover); }
+    .lang-picker-btn svg { opacity: 0.7; }
+    .lang-picker-menu { position: absolute; top: 100%; left: 0; margin-top: 4px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; min-width: 160px; z-index: 10; }
+    .lang-picker-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: white; cursor: pointer; font-size: 0.85rem; text-align: left; color: var(--text); }
+    .lang-picker-menu button:hover { background: #f1f5f9; }
+    .lang-picker-menu button.active { background: #f1f5f9; font-weight: 600; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked@15/lib/marked.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
 </head>
 <body>
-  <div class="top-bar">
-    <div class="lang-dropdown" id="lang-dropdown">
-      <button class="lang-toggle" id="lang-toggle" onclick="document.getElementById('lang-menu').classList.toggle('open')">
-        <span id="lang-flag">🌐</span>
-        <span id="lang-name">…</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-      </button>
-      <div class="lang-menu" id="lang-menu"></div>
+  <div id="app">
+    <div class="top-bar">
+      <language-picker
+        :languages="languages"
+        :selected="selectedLang"
+        @select="selectLanguage">
+      </language-picker>
+      <h1>{{ title }}</h1>
     </div>
-    <h1 id="title"></h1>
+
+    <p v-if="description" class="description">{{ description }}</p>
+
+    <div v-if="labels.length" class="labels">
+      <span class="badge" v-for="l in labels" :key="l">{{ l }}</span>
+    </div>
+
+    <div class="cta">
+      <a :href="addUrl">Add Workshop to Open Learn</a>
+    </div>
+
+    <div v-if="lessons.length">
+      <h2>{{ lessons.length }} Lessons</h2>
+      <ol>
+        <li v-for="l in lessons" :key="l.number"><strong>{{ l.title }}</strong></li>
+      </ol>
+    </div>
+
+    <div v-if="!loaded" class="loading">Loading…</div>
+
+    <div v-if="changelogHtml" class="changelog" v-html="changelogHtml"></div>
+
+    <footer>
+      <a :href="ghUrl">GitHub</a> · Powered by <a href="https://open-learn.app">Open Learn</a>
+    </footer>
   </div>
-  <div id="header"></div>
-  <div id="content" class="loading">Loading…</div>
-  <div id="changelog"></div>
-  <footer>
-    <a id="gh-link" href="#">GitHub</a> · Powered by <a href="https://open-learn.app">Open Learn</a>
-  </footer>
 
+  <!-- Language Picker Component -->
   <script>
-    const FLAGS = {
-      'deutsch':'🇩🇪','english':'🇬🇧','farsi':'🇮🇷','فارسی':'🇮🇷',
-      'français':'🇫🇷','español':'🇪🇸','italiano':'🇮🇹','português':'🇵🇹',
-      'polski':'🇵🇱','türkçe':'🇹🇷','العربية':'🇸🇦','中文':'🇨🇳',
-      '日本語':'🇯🇵','한국어':'🇰🇷','हिन्दी':'🇮🇳','українська':'🇺🇦',
-      'arabic':'🇸🇦'
-    }
+  const FLAGS = {
+    'deutsch':'🇩🇪','english':'🇬🇧','farsi':'🇮🇷','فارسی':'🇮🇷',
+    'français':'🇫🇷','español':'🇪🇸','italiano':'🇮🇹','português':'🇵🇹',
+    'polski':'🇵🇱','türkçe':'🇹🇷','العربية':'🇸🇦','中文':'🇨🇳',
+    '日本語':'🇯🇵','한국어':'🇰🇷','हिन्दी':'🇮🇳','українська':'🇺🇦',
+    'arabic':'🇸🇦'
+  }
 
-    const path = location.pathname.replace(/\/$/, '')
-    const workshopName = path.split('/').pop() || 'workshop'
-    const baseUrl = location.origin + path
-    const sourceUrl = baseUrl + '/index.yaml'
-    const ghUrl = `https://github.com/openlearnapp/${workshopName}`
+  const LanguagePicker = {
+    props: ['languages', 'selected'],
+    emits: ['select'],
+    data() { return { open: false } },
+    methods: {
+      flag(lang) { return FLAGS[lang] || '🌐' },
+      capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1) },
+      pick(lang) { this.open = false; this.$emit('select', lang) },
+      closeOnOutsideClick(e) { if (!this.$el.contains(e.target)) this.open = false }
+    },
+    mounted() { document.addEventListener('click', this.closeOnOutsideClick) },
+    unmounted() { document.removeEventListener('click', this.closeOnOutsideClick) },
+    template: `
+      <div class="lang-picker">
+        <button class="lang-picker-btn" @click.stop="open = !open">
+          <span>{{ flag(selected) }}</span>
+          <span>{{ capitalize(selected || '…') }}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div v-if="open" class="lang-picker-menu">
+          <button v-for="lang in languages" :key="lang" :class="{ active: lang === selected }" @click="pick(lang)">
+            <span>{{ flag(lang) }}</span>
+            <span>{{ capitalize(lang) }}</span>
+          </button>
+        </div>
+      </div>
+    `
+  }
 
-    document.getElementById('gh-link').href = ghUrl
+  // Main App
+  const { createApp, ref, computed } = Vue
 
-    // Close dropdown on outside click
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.lang-dropdown')) {
-        document.getElementById('lang-menu').classList.remove('open')
-      }
-    })
+  const app = createApp({
+    components: { LanguagePicker },
+    setup() {
+      const pathname = location.pathname.replace(/\/$/, '')
+      const workshopName = pathname.split('/').pop() || 'workshop'
+      const baseUrl = location.origin + pathname
+      const sourceUrl = baseUrl + '/index.yaml'
+      const ghUrl = `https://github.com/openlearnapp/${workshopName}`
 
-    let langData = {}
-    let selectedLang = null
+      const loaded = ref(false)
+      const selectedLang = ref(null)
+      const languages = ref([])
+      const langData = ref({}) // { lang: { ws, lessons } }
+      const changelogHtml = ref('')
 
-    async function fetchYaml(url) {
-      try {
-        const r = await fetch(url)
-        return r.ok ? jsyaml.load(await r.text()) : null
-      } catch { return null }
-    }
-
-    function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1) }
-
-    function selectLanguage(lang) {
-      selectedLang = lang
-      const d = langData[lang]
-      if (!d) return
-
-      document.getElementById('lang-menu').classList.remove('open')
-
-      // Update dropdown button
-      document.getElementById('lang-flag').textContent = FLAGS[lang] || '🌐'
-      document.getElementById('lang-name').textContent = capitalize(lang)
-
-      // Update active state in menu
-      document.querySelectorAll('#lang-menu button').forEach(b =>
-        b.classList.toggle('active', b.dataset.lang === lang)
+      const ws = computed(() => langData.value[selectedLang.value]?.ws || {})
+      const title = computed(() => ws.value.title || workshopName)
+      const description = computed(() => ws.value.description || '')
+      const labels = computed(() => ws.value.labels || [])
+      const lessons = computed(() => langData.value[selectedLang.value]?.lessons || [])
+      const addUrl = computed(() =>
+        `https://open-learn.app/#/add?source=${encodeURIComponent(sourceUrl)}&lang=${encodeURIComponent(selectedLang.value || '')}`
       )
 
-      const ws = d.ws
-      const title = ws.title || workshopName
-      document.title = title + ' – Open Learn Workshop'
-      document.getElementById('title').textContent = title
-
-      // Description + labels + CTA
-      const addUrlWithLang = `https://open-learn.app/#/add?source=${encodeURIComponent(sourceUrl)}&lang=${encodeURIComponent(lang)}`
-      let html = ''
-      if (ws.description) html += `<p class="description">${ws.description}</p>`
-      if (ws.labels?.length) html += `<div class="labels">${ws.labels.map(l => `<span class="badge">${l}</span>`).join('')}</div>`
-      html += `<div class="cta"><a href="${addUrlWithLang}">Add Workshop to Open Learn</a></div>`
-      document.getElementById('header').innerHTML = html
-
-      // Lessons
-      let content = ''
-      if (d.lessons.length > 0) {
-        content += `<h2>${d.lessons.length} Lessons</h2><ol>`
-        for (const l of d.lessons) content += `<li><strong>${l.title}</strong></li>`
-        content += '</ol>'
+      function selectLanguage(lang) {
+        selectedLang.value = lang
+        document.title = (langData.value[lang]?.ws?.title || workshopName) + ' – Open Learn Workshop'
       }
-      document.getElementById('content').innerHTML = content
-    }
 
-    async function render() {
-      const [indexData, changelogText] = await Promise.all([
-        fetchYaml('index.yaml'),
-        fetch('CHANGELOG.md').then(r => r.ok ? r.text() : null).catch(() => null)
-      ])
+      async function fetchYaml(url) {
+        try {
+          const r = await fetch(url)
+          return r.ok ? jsyaml.load(await r.text()) : null
+        } catch { return null }
+      }
 
-      const languages = (indexData?.languages || []).map(l => typeof l === 'string' ? l : l.folder)
+      async function init() {
+        const [indexData, changelogText] = await Promise.all([
+          fetchYaml('index.yaml'),
+          fetch('CHANGELOG.md').then(r => r.ok ? r.text() : null).catch(() => null)
+        ])
 
-      // Load all language data in parallel
-      await Promise.all(languages.map(async lang => {
-        const wsYaml = await fetchYaml(`${lang}/workshops.yaml`) || await fetchYaml(`${lang}/topics.yaml`)
-        const ws = (wsYaml?.workshops || wsYaml?.topics || [])[0] || {}
-        const wsFolder = ws.folder || workshopName
-        const lessonsYaml = await fetchYaml(`${lang}/${wsFolder}/lessons.yaml`)
-        const lessonFolders = lessonsYaml?.lessons || []
-        const lessons = await Promise.all(lessonFolders.map(async folder => {
-          const c = await fetchYaml(`${lang}/${wsFolder}/${folder}/content.yaml`)
-          return { title: c?.title || folder, number: c?.number || 0 }
+        const langs = (indexData?.languages || []).map(l => typeof l === 'string' ? l : l.folder)
+        languages.value = langs
+
+        // Load all language data in parallel
+        const data = {}
+        await Promise.all(langs.map(async lang => {
+          const wsYaml = await fetchYaml(`${lang}/workshops.yaml`) || await fetchYaml(`${lang}/topics.yaml`)
+          const wsEntry = (wsYaml?.workshops || wsYaml?.topics || [])[0] || {}
+          const wsFolder = wsEntry.folder || workshopName
+          const lessonsYaml = await fetchYaml(`${lang}/${wsFolder}/lessons.yaml`)
+          const folders = lessonsYaml?.lessons || []
+          const lessons = await Promise.all(folders.map(async folder => {
+            const c = await fetchYaml(`${lang}/${wsFolder}/${folder}/content.yaml`)
+            return { title: c?.title || folder, number: c?.number || 0 }
+          }))
+          data[lang] = { ws: wsEntry, lessons: lessons.sort((a, b) => a.number - b.number) }
         }))
-        langData[lang] = { ws, lessons: lessons.sort((a, b) => a.number - b.number) }
-      }))
 
-      // Build dropdown menu
-      const menuEl = document.getElementById('lang-menu')
-      for (const lang of languages) {
-        const btn = document.createElement('button')
-        btn.dataset.lang = lang
-        btn.innerHTML = `<span>${FLAGS[lang] || '🌐'}</span><span>${capitalize(lang)}</span>`
-        btn.onclick = () => selectLanguage(lang)
-        menuEl.appendChild(btn)
+        langData.value = data
+        if (langs.length > 0) selectLanguage(langs[0])
+        if (changelogText) changelogHtml.value = marked.parse(changelogText)
+        loaded.value = true
       }
 
-      // Select first language
-      if (languages.length > 0) selectLanguage(languages[0])
-      else {
-        document.getElementById('title').textContent = workshopName
-        document.getElementById('content').innerHTML = ''
-      }
+      init()
 
-      if (changelogText) document.getElementById('changelog').innerHTML = marked.parse(changelogText)
+      return {
+        loaded, selectedLang, languages, title, description, labels, lessons,
+        addUrl, ghUrl, changelogHtml, selectLanguage
+      }
     }
+  })
 
-    render()
+  app.mount('#app')
   </script>
 </body>
 </html>
