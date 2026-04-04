@@ -6,44 +6,45 @@
   <title>Loading… – Open Learn Workshop</title>
   <style>
     :root { --accent: #2563eb; --accent-hover: #1d4ed8; --text: #1e293b; --muted: #64748b; --border: #e2e8f0; }
-    * { box-sizing: border-box; margin: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: system-ui, -apple-system, sans-serif; max-width: 640px; margin: 0 auto; padding: 40px 20px 60px; color: var(--text); line-height: 1.6; }
 
-    /* Header: title + language picker */
-    .header { margin-bottom: 0.5rem; }
-    .header h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-    .header .description { color: var(--muted); margin-bottom: 0.75rem; }
-    .lang-picker { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    /* Language picker — top left, like platform nav */
+    .lang-picker { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
     .lang-btn { padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; background: white; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 4px; }
     .lang-btn:hover { border-color: var(--accent); }
     .lang-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    /* Header */
+    .header h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .header .description { color: var(--muted); margin-bottom: 0.5rem; }
 
     /* Labels */
     .labels { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1rem; }
     .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #eff6ff; color: var(--accent); }
 
     /* CTA */
-    .cta { margin: 1.5rem 0; }
-    .cta a { display: inline-block; padding: 12px 32px; background: var(--text); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 1rem; }
-    .cta a:hover { background: #0f172a; }
+    .cta { margin: 1.25rem 0 1.5rem; }
+    .cta a { display: inline-block; padding: 12px 32px; background: var(--accent); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 1rem; }
+    .cta a:hover { background: var(--accent-hover); }
 
-    /* Markdown content */
-    #readme { text-align: left; }
+    /* Markdown content — strip first h1, description paragraph, and start blockquote */
     #readme h1 { display: none; }
-    #readme blockquote:first-of-type { display: none; }
-    #readme h2 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
+    #readme > p:first-of-type { display: none; }
+    #readme > blockquote:first-of-type { display: none; }
+    #readme h2 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid var(--border); }
     #readme h3 { font-size: 1rem; margin: 1.25rem 0 0.4rem; }
     #readme p { margin: 0.5rem 0; }
     #readme blockquote { margin: 0.5rem 0; padding: 0.5rem 1rem; border-left: 3px solid var(--border); color: var(--muted); font-size: 0.9rem; }
-    #readme ul, #readme ol { padding-left: 1.5rem; margin: 0.5rem 0; text-align: left; }
+    #readme ul, #readme ol { padding-left: 1.5rem; margin: 0.5rem 0; }
     #readme li { margin: 0.25rem 0; }
     #readme code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
     #readme a { color: var(--accent); }
 
     /* Changelog */
-    #changelog { margin-top: 2.5rem; }
+    #changelog { margin-top: 2rem; }
     #changelog h1, #changelog h2 { font-size: 1.05rem; margin: 1.5rem 0 0.4rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
-    #changelog ul { padding-left: 1.25rem; margin: 0.25rem 0; text-align: left; }
+    #changelog ul { padding-left: 1.25rem; margin: 0.25rem 0; }
     #changelog li { font-size: 0.85rem; color: #475569; line-height: 1.6; }
 
     /* Footer */
@@ -55,9 +56,10 @@
   <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
 </head>
 <body>
-  <div class="header" id="header"></div>
+  <div id="lang-picker"></div>
+  <div id="header" class="header"></div>
   <div id="labels"></div>
-  <div class="cta" id="cta"></div>
+  <div id="cta" class="cta"></div>
   <div id="readme" class="loading">Loading…</div>
   <div id="changelog"></div>
   <footer>
@@ -82,8 +84,7 @@
     document.getElementById('gh-link').href = ghUrl
     document.getElementById('cta').innerHTML = `<a href="${addUrl}">Start Workshop</a>`
 
-    let workshopData = {} // lang → workshops.yaml data
-    let selectedLang = null
+    let workshopData = {}
 
     async function fetchYaml(url) {
       try {
@@ -93,68 +94,53 @@
     }
 
     function updateForLanguage(lang) {
-      selectedLang = lang
       const ws = workshopData[lang]
       if (!ws) return
 
-      // Update language picker active state
-      document.querySelectorAll('.lang-btn').forEach(b => {
+      document.querySelectorAll('.lang-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.lang === lang)
-      })
+      )
 
-      // Update title + description from YAML
-      const headerEl = document.getElementById('header')
-      headerEl.innerHTML = `<h1>${ws.title || workshopName}</h1>${ws.description ? `<p class="description">${ws.description}</p>` : ''}`
+      document.getElementById('header').innerHTML =
+        `<h1>${ws.title || workshopName}</h1>` +
+        (ws.description ? `<p class="description">${ws.description}</p>` : '')
+
       document.title = (ws.title || workshopName) + ' – Open Learn Workshop'
 
-      // Update labels
       const labelsEl = document.getElementById('labels')
-      if (ws.labels?.length) {
-        labelsEl.innerHTML = ws.labels.map(l => `<span class="badge">${l}</span>`).join('')
-        labelsEl.className = 'labels'
-      } else {
-        labelsEl.innerHTML = ''
-      }
+      labelsEl.innerHTML = (ws.labels || []).map(l => `<span class="badge">${l}</span>`).join('')
+      labelsEl.className = ws.labels?.length ? 'labels' : ''
     }
 
     async function render() {
-      // Fetch everything in parallel
       const [readmeText, indexData, changelogText] = await Promise.all([
         fetch('README.md').then(r => r.ok ? r.text() : null).catch(() => null),
         fetchYaml('index.yaml'),
         fetch('CHANGELOG.md').then(r => r.ok ? r.text() : null).catch(() => null)
       ])
 
-      // Load workshop metadata for each language
       const languages = (indexData?.languages || []).map(l => typeof l === 'string' ? l : l.folder)
 
       const wsResults = await Promise.all(
         languages.map(async lang => {
           const data = await fetchYaml(`${lang}/workshops.yaml`) || await fetchYaml(`${lang}/topics.yaml`)
-          const ws = (data?.workshops || data?.topics || [])[0]
-          return [lang, ws || {}]
+          return [lang, (data?.workshops || data?.topics || [])[0] || {}]
         })
       )
-      for (const [lang, ws] of wsResults) {
-        workshopData[lang] = ws
+      for (const [lang, ws] of wsResults) workshopData[lang] = ws
+
+      // Language picker — always shown, top of page
+      const pickerEl = document.getElementById('lang-picker')
+      pickerEl.className = 'lang-picker'
+      for (const lang of languages) {
+        const btn = document.createElement('button')
+        btn.className = 'lang-btn'
+        btn.dataset.lang = lang
+        btn.textContent = `${FLAGS[lang] || '🌐'} ${lang}`
+        btn.onclick = () => updateForLanguage(lang)
+        pickerEl.appendChild(btn)
       }
 
-      // Render language picker (always shown for consistent layout)
-      if (languages.length > 0) {
-        const picker = document.createElement('div')
-        picker.className = 'lang-picker'
-        for (const lang of languages) {
-          const btn = document.createElement('button')
-          btn.className = 'lang-btn'
-          btn.dataset.lang = lang
-          btn.textContent = `${FLAGS[lang] || '🌐'} ${lang}`
-          btn.onclick = () => updateForLanguage(lang)
-          picker.appendChild(btn)
-        }
-        document.getElementById('header').after(picker)
-      }
-
-      // Select first language
       if (languages.length > 0) {
         updateForLanguage(languages[0])
       } else {
@@ -162,15 +148,10 @@
         document.title = workshopName + ' – Open Learn Workshop'
       }
 
-      // Render README (h1 and first blockquote hidden via CSS)
+      // README (h1, first p, first blockquote hidden via CSS — they come from YAML)
       const readmeEl = document.getElementById('readme')
-      if (readmeText) {
-        readmeEl.innerHTML = marked.parse(readmeText)
-      } else {
-        readmeEl.innerHTML = ''
-      }
+      readmeEl.innerHTML = readmeText ? marked.parse(readmeText) : ''
 
-      // Render CHANGELOG
       if (changelogText) {
         document.getElementById('changelog').innerHTML = marked.parse(changelogText)
       }
