@@ -1,0 +1,257 @@
+version: 2
+number: 3
+title: "راه‌اندازی Management Cluster روی Hetzner"
+description: "Provision یک سرور Hetzner، نصب k0s، kubectl، Helm و deploy k0rdent برای ایجاد management cluster شما."
+image: "images/lesson-header.svg"
+image_caption: "راه‌اندازی قدم به قدم: از سرور Hetzner تا management cluster k0rdent"
+sections:
+  - title: "پیش‌نیازها"
+    image: "images/section-01-prerequisites.svg"
+    image_caption: "Hetzner Cloud Console — نیازمندی‌های سرور و راه‌اندازی"
+    explanation: |
+      قبل از شروع نیاز دارید به:
+
+      - یک حساب **Hetzner Cloud** (یا هر سرور Linux با دسترسی SSH root)
+      - سروری با حداقل **۴ هسته CPU، ۸ گیگابایت RAM، ۴۰ گیگابایت disk** (مثلاً Hetzner CX31 یا CPX31)
+      - **Ubuntu 22.04** یا توزیع Linux مشابه
+      - دسترسی SSH به سرور
+      - یک دستگاه محلی با SSH client
+
+      **راه‌اندازی Hetzner:**
+      1. وارد [Hetzner Cloud Console](https://console.hetzner.cloud) شوید
+      2. یک project جدید ایجاد کنید (مثلاً "k0rdent-workshop")
+      3. یک سرور ایجاد کنید: **CX31** (2 vCPU، 8 GB RAM) یا بزرگتر، Ubuntu 22.04، SSH key خود را اضافه کنید
+      4. آدرس IP عمومی سرور را یادداشت کنید
+    examples:
+      - q: "حداقل نیازمندی‌های سرور برای management cluster k0rdent چیست؟"
+        a: "حداقل ۴ هسته CPU، ۸ گیگابایت RAM و ۴۰ گیگابایت فضای disk."
+        labels: ["Basics", "Cluster"]
+        rel:
+          - ["Management Cluster", "cluster Kubernetes‌ای که k0rdent روی آن نصب شده است"]
+          - ["Hetzner Cloud", "provider cloud آلمانی با سرورهای VPS و dedicated مقرون‌به‌صرفه"]
+
+      - type: input
+        q: "کدام نسخه Ubuntu برای management cluster توصیه می‌شود؟"
+        a:
+          - "22.04"
+          - "Ubuntu 22.04"
+        labels: ["Quiz"]
+
+  - title: "نصب Kubernetes (k0s)"
+    image: "images/section-02-k0s.svg"
+    image_caption: "نصب k0s — Kubernetes سبک و گواهی‌شده"
+    explanation: |
+      SSH به سرور Hetzner خود بزنید و k0s را نصب کنید — یک توزیع Kubernetes سبک و CNCF-certified:
+
+      ```bash
+      ssh root@IP_سرور_شما
+      ```
+
+      نصب k0s:
+      ```bash
+      curl --proto '=https' --tlsv1.2 -sSf https://get.k0s.sh | sudo sh
+      sudo k0s install controller --enable-worker --no-taints
+      sudo k0s start
+      ```
+
+      flag `--enable-worker` این node تکی را هم به عنوان control plane و هم worker عمل می‌کند.
+      flag `--no-taints` اجازه اجرای workload ها روی node control plane را می‌دهد.
+
+      ۲-۳ دقیقه صبر کنید، سپس تأیید کنید:
+      ```bash
+      sudo k0s kubectl get nodes
+      ```
+    examples:
+      - q: "flag --enable-worker چه کاری انجام می‌دهد؟"
+        a: "node control plane را وادار می‌کند که به عنوان worker node هم عمل کند تا pod ها بتوانند روی آن برنامه‌ریزی شوند."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["k0s", "توزیع Kubernetes سبک و CNCF-certified"]
+          - ["--enable-worker", "flag‌ای که یک controller k0s را وادار می‌کند به عنوان worker هم عمل کند"]
+          - ["--no-taints", "flag‌ای که اجازه برنامه‌ریزی workload ها روی node های control plane را می‌دهد"]
+
+      - type: select
+        q: "چرا از --enable-worker و --no-taints برای یک cluster single-node استفاده می‌کنیم؟"
+        options:
+          - text: "برای بهبود امنیت"
+          - text: "تا node تکی بتواند هم pod های control plane و هم workload را اجرا کند"
+            correct: true
+          - text: "برای فعال‌سازی high availability"
+          - text: "برای غیرفعال‌سازی scheduler"
+        labels: ["Quiz"]
+
+  - title: "نصب kubectl"
+    image: "images/section-03-kubectl.svg"
+    image_caption: "نصب و پیکربندی kubectl برای دسترسی به cluster"
+    explanation: |
+      ابزار CLI Kubernetes را نصب کنید:
+
+      ```bash
+      sudo apt-get update
+      sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
+
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key \
+        | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' \
+        | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
+
+      sudo apt-get update
+      sudo apt-get install -y kubectl
+      ```
+
+      kubeconfig را پیکربندی کنید تا kubectl بتواند به cluster k0s شما متصل شود:
+
+      ```bash
+      sudo cp /var/lib/k0s/pki/admin.conf KUBECONFIG
+      sudo chmod +r KUBECONFIG
+      export KUBECONFIG=./KUBECONFIG
+      ```
+
+      تأیید:
+      ```bash
+      kubectl get nodes
+      ```
+    examples:
+      - q: "k0s kubeconfig admin خود را کجا ذخیره می‌کند؟"
+        a: "/var/lib/k0s/pki/admin.conf"
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["kubectl", "ابزار command-line Kubernetes برای تعامل با cluster"]
+          - ["kubeconfig", "فایل پیکربندی برای احراز هویت به cluster Kubernetes"]
+
+      - type: input
+        q: "کدام دستور تأیید می‌کند که kubectl می‌تواند به cluster متصل شود؟"
+        a:
+          - "kubectl get nodes"
+        labels: ["Quiz"]
+
+  - title: "نصب Helm"
+    image: "images/section-04-helm.svg"
+    image_caption: "نصب Helm — مدیر package Kubernetes"
+    explanation: |
+      Helm مدیر package برای Kubernetes است و برای نصب k0rdent استفاده می‌شود:
+
+      ```bash
+      curl -fsSL -o get_helm.sh \
+        https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+      chmod 700 get_helm.sh
+      ./get_helm.sh
+      ```
+
+      Helm در `/usr/local/bin/helm` نصب می‌شود. تأیید:
+      ```bash
+      helm version
+      ```
+    examples:
+      - q: "چرا به Helm نیاز داریم؟"
+        a: "k0rdent از طریق یک Helm chart نصب می‌شود و Helm deployment operator KCM و sub-component های آن را مدیریت می‌کند."
+        labels: ["Basics", "k0rdent"]
+        rel:
+          - ["Helm", "مدیر package برای Kubernetes، برای نصب k0rdent استفاده می‌شود"]
+          - ["Helm chart", "یک package از resource های Kubernetes از پیش پیکربندی‌شده"]
+
+  - title: "نصب k0rdent"
+    image: "images/section-05-install-k0rdent.svg"
+    image_caption: "helm install k0rdent — deploy operator KCM"
+    explanation: |
+      حالا k0rdent را با Helm chart نصب کنید:
+
+      ```bash
+      helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm \
+        --version 1.8.0 \
+        -n kcm-system \
+        --create-namespace
+      ```
+
+      این **operator KCM** را deploy می‌کند که سپس به‌صورت خودکار همه sub-component ها را deploy می‌کند شامل:
+      - controller های CAPI (Cluster API)
+      - controller های infrastructure provider (AWS، Azure، GCP، vSphere، OpenStack)
+      - k0smotron برای hosted control planes
+      - controller های Flux برای GitOps
+      - ProjectSveltos برای service management
+
+      کل راه‌اندازی تقریباً **۵-۱۰ دقیقه** طول می‌کشد.
+    examples:
+      - q: "دستور Helm install برای k0rdent v1.8.0 چیست؟"
+        a: "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0 -n kcm-system --create-namespace"
+        labels: ["k0rdent", "CLI"]
+        rel:
+          - ["kcm-system", "namespace‌ای که component های k0rdent در آن نصب می‌شوند"]
+          - ["KCM operator", "operator اصلی که همه sub-component های k0rdent را bootstrap می‌کند"]
+
+      - type: select
+        q: "operator KCM بعد از نصب Helm چه کاری می‌کند؟"
+        options:
+          - text: "هیچ‌چیز — باید هر component را به‌صورت دستی نصب کنید"
+          - text: "به‌صورت خودکار همه sub-component ها از جمله CAPI و provider ها را deploy می‌کند"
+            correct: true
+          - text: "فقط dashboard را نصب می‌کند"
+          - text: "بلافاصله child cluster ایجاد می‌کند"
+        labels: ["Quiz"]
+
+  - title: "راه‌اندازی دسترسی Remote"
+    image: "images/section-06-remote-access.svg"
+    image_caption: "پیکربندی kubeconfig برای دسترسی kubectl از راه دور از دستگاه محلی شما"
+    explanation: |
+      برای مدیریت cluster از دستگاه محلی خود، kubeconfig را کپی کنید:
+
+      ```bash
+      # روی سرور، kubeconfig را نمایش دهید
+      sudo cat /var/lib/k0s/pki/admin.conf
+      ```
+
+      محتوا را به دستگاه محلی خود کپی کرده و ذخیره کنید (مثلاً `~/.kube/k0rdent-config`). سپس `localhost` را با IP عمومی سرور جایگزین کنید:
+
+      ```bash
+      # روی دستگاه محلی شما
+      export KUBECONFIG=~/.kube/k0rdent-config
+      sed -i 's/localhost/IP_سرور_شما/g' ~/.kube/k0rdent-config
+      sed -i 's/127.0.0.1/IP_سرور_شما/g' ~/.kube/k0rdent-config
+
+      kubectl get nodes
+      ```
+
+      مطمئن شوید که پورت **6443** قابل دسترس است (تنظیمات firewall Hetzner را بررسی کنید).
+    examples:
+      - q: "API server Kubernetes روی کدام پورت گوش می‌دهد؟"
+        a: "پورت 6443."
+        labels: ["Basics", "Kubernetes"]
+
+      - q: "چگونه دسترسی kubectl از راه دور را پیکربندی می‌کنید؟"
+        a: "kubeconfig را از سرور کپی کنید، localhost را با IP عمومی سرور جایگزین کنید و متغیر محیطی KUBECONFIG را تنظیم کنید."
+        labels: ["Basics", "CLI"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-07-check.svg"
+    image_caption: "دانش راه‌اندازی management cluster k0rdent خود را آزمایش کنید"
+    explanation: "قبل از ادامه درک خود از فرآیند راه‌اندازی را آزمایش کنید!"
+    examples:
+      - q: "دستور Helm install برای نصب k0rdent v1.8.0 چیست؟"
+        type: input
+        a:
+          - "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0 -n kcm-system --create-namespace"
+          - "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0"
+        labels: ["Quiz"]
+      - q: "flag --enable-worker هنگام نصب k0s چه کاری انجام می‌دهد؟"
+        type: select
+        options:
+          - text: "Kubernetes dashboard را فعال می‌کند"
+          - text: "node control plane را وادار می‌کند به عنوان worker هم عمل کند تا pod ها روی آن برنامه‌ریزی شوند"
+            correct: true
+          - text: "حالت high availability را فعال می‌کند"
+          - text: "همه سیاست‌های امنیتی را غیرفعال می‌کند"
+        labels: ["Quiz"]
+      - q: "کدام ابزارها باید قبل از k0rdent نصب شوند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "k0s (Kubernetes)"
+            correct: true
+          - text: "kubectl"
+            correct: true
+          - text: "Helm"
+            correct: true
+          - text: "Docker Desktop"
+        labels: ["Quiz"]

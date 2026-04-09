@@ -1,0 +1,233 @@
+version: 2
+number: 1
+title: "کانتینر و Kubernetes — چرا؟"
+description: "کانتینرها، Docker، Kubernetes و اینکه چرا k0rdent روی آن‌ها نیاز است را بفهمید — از صفر مطلق."
+image: "images/lesson-header.svg"
+image_caption: "تشبیه کشتی کانتینری: از Docker تا orchestration در Kubernetes"
+sections:
+  - title: "کانتینر چیست؟"
+    image: "images/section-01-containers.svg"
+    image_caption: "یک کانتینر یک برنامه را با همه چیزی که برای اجرا نیاز دارد بسته‌بندی می‌کند"
+    explanation: |
+      تصور کنید کالاهای فیزیکی ارسال می‌کنید. همه چیز را در یک **کانتینر استاندارد** می‌گذارید — مهم نیست با کامیون، کشتی یا قطار برود. کانتینر همیشه یکسان است.
+
+      یک **کانتینر نرم‌افزاری** همین‌طور کار می‌کند:
+
+      - برنامه شما را **با همه وابستگی‌هایش** (کتابخانه‌ها، runtime، پیکربندی) بسته‌بندی می‌کند
+      - روی لپ‌تاپ، سرور یا هر cloud به یک شکل اجرا می‌شود
+      - از کانتینرهای دیگر **ایزوله** است — بدون تداخل بین برنامه‌ها
+
+      **قبل از کانتینرها:**
+      - "روی ماشین من کار می‌کند" مشکل واقعی بود
+      - دیپلوی یعنی: OS درست، runtime درست، کتابخانه‌های درست نصب کنید
+
+      **با کانتینرها:**
+      - یک‌بار بسازید، همه‌جا اجرا کنید
+      - راه‌اندازی فوری (ثانیه‌ها، نه دقیقه‌ها)
+      - مقیاس‌پذیری آسان: فقط کانتینرهای بیشتری اجرا کنید
+
+      | بدون کانتینر | با کانتینر |
+      |-------------|-----------|
+      | "روی ماشین من کار می‌کند" | همه‌جا یکسان اجرا می‌شود |
+      | راه‌اندازی کند VM (دقیقه‌ها) | راه‌اندازی سریع (ثانیه‌ها) |
+      | تداخل وابستگی‌ها | ایزوله برای هر کانتینر |
+      | سخت برای مقیاس | مقیاس با کانتینرهای بیشتر |
+    examples:
+      - q: "docker run nginx"
+        a: "یک وب‌سرور nginx را درون کانتینر اجرا می‌کند. اگر image به‌صورت محلی در دسترس نباشد آن را دانلود می‌کند."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["docker-run", "اجرای یک کانتینر از یک image", "docker run <image>"]
+          - ["nginx", "وب‌سرور محبوب، اغلب به عنوان کانتینر نمونه استفاده می‌شود", "image"]
+      - q: "docker ps"
+        a: "همه کانتینرهای در حال اجرا را فهرست می‌کند — container ID، image، status و ports را نشان می‌دهد."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["docker-ps", "فهرست کانتینرهای در حال اجرا", "docker ps"]
+      - q: "تفاوت کانتینر و VM چیست؟"
+        a: "VM یک سیستم‌عامل کامل را مجازی‌سازی می‌کند (کند، سنگین). کانتینرها kernel سیستم‌عامل host را به اشتراک می‌گذارند — سبک، سریع و منابع بسیار کمتری مصرف می‌کنند."
+        labels: ["Basics"]
+        rel:
+          - ["VM", "ماشین مجازی — مجازی‌سازی کامل OS", "سنگین، دقیقه‌ها برای راه‌اندازی"]
+          - ["container", "ایزولاسیون فرآیند سبک با kernel مشترک", "ثانیه‌ها برای راه‌اندازی"]
+
+  - title: "Kubernetes چیست؟"
+    image: "images/section-02-kubernetes.svg"
+    image_caption: "Kubernetes به عنوان ناخدای بندر: هماهنگی کانتینرهای زیاد روی کشتی‌های زیاد"
+    explanation: |
+      حالا کانتینر دارید. اما وقتی **۱۰۰ کانتینر روی ۱۰ سرور** دارید چه می‌شود؟ چه کسی آن‌ها را راه‌اندازی می‌کند؟ چه کسی کانتینر crash کرده را restart می‌کند؟
+
+      اینجاست که **Kubernetes** (معروف به **K8s**) وارد می‌شود. آن را به عنوان **ناخدای بندر** در نظر بگیرید که همه کشتی‌های کانتینری را هماهنگ می‌کند.
+
+      Kubernetes مدیریت می‌کند:
+      - **Scheduling** — تصمیم می‌گیرد کدام سرور کدام کانتینر را اجرا کند
+      - **Self-healing** — کانتینرهای crash شده را به‌صورت خودکار restart می‌کند
+      - **Scaling** — کانتینرها را بر اساس بار اضافه یا حذف می‌کند
+      - **Load balancing** — ترافیک را بین کانتینرها توزیع می‌کند
+      - **Rolling updates** — کانتینرها را بدون downtime به‌روز می‌کند
+
+      **مفاهیم کلیدی Kubernetes:**
+
+      | مفهوم | چیست |
+      |-------|------|
+      | **Pod** | کوچک‌ترین واحد — ۱ یا چند کانتینر که با هم اجرا می‌شوند |
+      | **Node** | یک سرور (فیزیکی یا مجازی) که Pod اجرا می‌کند |
+      | **Cluster** | گروهی از Node ها که با هم مدیریت می‌شوند |
+      | **Deployment** | تعریف می‌کند چند نسخه از برنامه اجرا شود |
+      | **Service** | یک endpoint شبکه پایدار برای برنامه |
+
+      **Control plane** مغز است — تصمیم می‌گیرد. **Worker nodes** عضله هستند — کانتینرهای شما را اجرا می‌کنند.
+    examples:
+      - q: "kubectl get pods"
+        a: "همه Pod ها در namespace فعلی را فهرست می‌کند — نام، status، restart ها و سن را نشان می‌دهد."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["kubectl", "ابزار CLI برای تعامل با cluster های Kubernetes", "command"]
+          - ["Pod", "کوچک‌ترین واحد قابل deploy در Kubernetes — ۱+ کانتینر", "concept"]
+      - q: "kubectl get nodes"
+        a: "همه Node ها در cluster را فهرست می‌کند — نام، status، نقش‌ها و نسخه Kubernetes را نشان می‌دهد."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["Node", "یک سرور (VM یا فیزیکی) که Pod اجرا می‌کند", "concept"]
+      - q: "Pod چیست؟"
+        a: "کوچک‌ترین واحد قابل deploy در Kubernetes. یک Pod یک یا چند کانتینر دارد که شبکه و storage را به اشتراک می‌گذارند."
+        labels: ["Kubernetes"]
+        rel:
+          - ["Pod", "کوچک‌ترین واحد قابل deploy — ۱+ کانتینر با شبکه/storage مشترک", "concept"]
+
+  - title: "معماری Kubernetes"
+    image: "images/section-03-architecture.svg"
+    image_caption: "Control plane و worker nodes — دو بخش هر cluster Kubernetes"
+    explanation: |
+      هر cluster Kubernetes دو نوع component دارد:
+
+      **Control Plane** (مغز):
+      - **API Server** — hub مرکزی؛ همه ارتباطات از طریق آن می‌گذرد
+      - **etcd** — پایگاه داده‌ای که همه وضعیت cluster را ذخیره می‌کند
+      - **Scheduler** — تصمیم می‌گیرد کدام Node هر Pod را اجرا کند
+      - **Controller Manager** — cluster را نظارت می‌کند و وضعیت مطلوب را تضمین می‌کند
+
+      **Worker Nodes** (عضله):
+      - **kubelet** — agent روی هر Node، Pod ها را مدیریت می‌کند
+      - **kube-proxy** — شبکه‌سازی و load balancing را مدیریت می‌کند
+      - **Container runtime** — کانتینرهای واقعی را اجرا می‌کند (containerd, CRI-O)
+
+      ```
+      ┌─────────────────────────────────┐
+      │         Control Plane           │
+      │  API Server → etcd              │
+      │  Scheduler + Controller Manager │
+      └────────────────┬────────────────┘
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+      ┌────────┐  ┌────────┐  ┌────────┐
+      │ Node 1 │  │ Node 2 │  │ Node 3 │
+      │ Pods   │  │ Pods   │  │ Pods   │
+      └────────┘  └────────┘  └────────┘
+      ```
+
+      در k0rdent، **management cluster** خودش یک cluster Kubernetes است که control plane k0rdent را اجرا می‌کند. سپس **child cluster** ها را provision و مدیریت می‌کند.
+    examples:
+      - q: "kubectl get pods -n kube-system"
+        a: "همه Pod های component های control plane که در namespace kube-system اجرا می‌شوند را فهرست می‌کند."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["kube-system", "Namespace برای component های اصلی control plane Kubernetes", "namespace"]
+          - ["API Server", "Hub مرکزی برای همه API calls در Kubernetes", "component"]
+      - q: "etcd چه چیزی ذخیره می‌کند؟"
+        a: "همه وضعیت cluster — همه تعاریف resource، پیکربندی‌ها و وضعیت مطلوب در برابر واقعی همه object ها."
+        labels: ["Kubernetes"]
+        rel:
+          - ["etcd", "ذخیره key-value توزیع‌شده برای همه وضعیت cluster Kubernetes", "component"]
+      - q: "تفاوت control plane و worker nodes چیست؟"
+        a: "Control plane تصمیم می‌گیرد (API server، scheduler، etcd). Worker nodes Pod های برنامه واقعی را اجرا می‌کنند."
+        labels: ["Kubernetes"]
+
+  - title: "چرا k0rdent روی Kubernetes؟"
+    image: "images/section-04-why-k0rdent.svg"
+    image_caption: "k0rdent بسیاری از cluster های Kubernetes را مدیریت می‌کند — مثل مدیر ناوگان cluster ها"
+    explanation: |
+      Kubernetes orchestration کانتینر را **درون یک cluster** حل می‌کند. اما سازمان‌های مدرن **بسیاری از cluster** اجرا می‌کنند — dev، staging، production، edge، به ازای تیم، به ازای منطقه.
+
+      **مشکل چند cluster:**
+      - هر cluster باید جداگانه provision شود
+      - credential ها و دسترسی برای هر cluster مدیریت شود
+      - Service ها (ingress، monitoring، backup) روی هر cluster deploy شود
+      - به‌روزرسانی‌ها به همه cluster ها ارائه شود
+      - هیچ دید مرکزی از آنچه کجا اجرا می‌شود وجود ندارد
+
+      **k0rdent این را حل می‌کند.** این یک **super control plane** است — یک cluster Kubernetes که cluster های Kubernetes دیگر را مدیریت می‌کند:
+
+      | مشکل | راه‌حل k0rdent |
+      |-------|---------------|
+      | Provision cluster | ClusterDeployment + ClusterTemplate |
+      | مدیریت credential | Credential CRD (مهندسان secret نمی‌بینند) |
+      | Deploy service | KSM + ServiceTemplates روی همه cluster ها |
+      | به‌روزرسانی و lifecycle | Template chains با مسیرهای upgrade معتبر |
+      | دید مرکزی | Management cluster به عنوان single pane of glass |
+
+      **قیاس:** اگر Kubernetes ناخدای بندر برای یک بندر است، k0rdent **اداره کشتیرانی جهانی** است که همه بنادر را مدیریت می‌کند.
+    examples:
+      - q: "kubectl get clusterdeployments -A"
+        a: "همه cluster deployment های مدیریت‌شده توسط k0rdent در همه namespace ها را فهرست می‌کند."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["ClusterDeployment", "CRD نمایانگر یک cluster Kubernetes مدیریت‌شده", "k0rdent concept"]
+          - ["k0rdent", "Super control plane برای مدیریت بسیاری از cluster های Kubernetes", "platform"]
+      - q: "management cluster در k0rdent چیست؟"
+        a: "cluster Kubernetes‌ای که k0rdent روی آن نصب شده است. همه cluster های دیگر (child) را از مکانی مرکزی کنترل می‌کند."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["Management Cluster", "cluster‌ای که k0rdent روی آن نصب و اجرا می‌شود", "k0rdent concept"]
+          - ["Child Cluster", "cluster‌ای که توسط k0rdent provision و مدیریت می‌شود", "k0rdent concept"]
+      - q: "سه component اصلی k0rdent چیست؟"
+        a: "KCM (مدیر cluster برای provision)، KSM (مدیر state برای service ها) و KOF (Observability & FinOps)."
+        labels: ["k0rdent"]
+        rel:
+          - ["KCM", "k0rdent Cluster Manager — deploy و مدیریت lifecycle cluster", "component"]
+          - ["KSM", "k0rdent State Manager — deploy و مدیریت service ها روی cluster ها", "component"]
+          - ["KOF", "k0rdent Observability & FinOps — metric ها، log ها، هزینه", "component"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-05-check.svg"
+    image_caption: "درک خود از کانتینرها و Kubernetes را آزمایش کنید"
+    explanation: "قبل از شروع تنظیم عملی دانش خود را آزمایش کنید!"
+    examples:
+      - q: "کدام دستور یک کانتینر nginx را شروع می‌کند؟"
+        type: input
+        a: "docker run nginx"
+        labels: ["Quiz"]
+      - q: "Pod در Kubernetes چیست؟"
+        type: select
+        options:
+          - text: "کوچک‌ترین واحد قابل deploy — ۱ یا چند کانتینر که شبکه و storage مشترک دارند"
+            correct: true
+          - text: "یک سرور فیزیکی در cloud"
+          - text: "یک volume ذخیره‌سازی متصل به Node"
+          - text: "یک policy شبکه برای کانتینرها"
+        labels: ["Quiz"]
+      - q: "کدام دستور همه Node های یک cluster Kubernetes را فهرست می‌کند؟"
+        type: input
+        a: "kubectl get nodes"
+        labels: ["Quiz"]
+      - q: "Kubernetes به‌صورت خودکار کدام‌ها را مدیریت می‌کند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "Restart کردن کانتینرهای crash شده"
+            correct: true
+          - text: "توزیع ترافیک بین کانتینرها"
+            correct: true
+          - text: "نوشتن کد برنامه شما"
+          - text: "برنامه‌ریزی Pod ها روی Node های موجود"
+            correct: true
+        labels: ["Quiz"]
+      - q: "چرا k0rdent نیاز است در حالی که Kubernetes وجود دارد؟"
+        type: select
+        options:
+          - text: "Kubernetes بدون k0rdent نمی‌تواند کانتینر اجرا کند"
+          - text: "k0rdent بسیاری از cluster های Kubernetes را از یک control plane مدیریت می‌کند"
+            correct: true
+          - text: "k0rdent به‌طور کامل جایگزین Kubernetes می‌شود"
+          - text: "k0rdent فقط برای Docker کانتینرها نیاز است"
+        labels: ["Quiz"]

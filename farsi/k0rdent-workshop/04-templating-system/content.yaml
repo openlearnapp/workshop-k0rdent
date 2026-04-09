@@ -1,0 +1,263 @@
+version: 2
+number: 5
+title: "سیستم Template"
+description: "بررسی عمیق معماری template-driven k0rdent: ClusterTemplate‌ها، ServiceTemplate‌ها و ProviderTemplate‌ها."
+image: "images/lesson-header.svg"
+image_caption: "سیستم template k0rdent — blueprint‌های تغییرناپذیر برای cluster‌ها و سرویس‌ها"
+sections:
+  - title: "انواع Template"
+    image: "images/section-01-template-types.svg"
+    image_caption: "سه نوع template: ClusterTemplate، ServiceTemplate، ProviderTemplate"
+    explanation: |
+      k0rdent از سه نوع template استفاده می‌کند — همه بعد از ایجاد **تغییرناپذیر** هستند:
+
+      **۱. ClusterTemplate**
+      زیرساخت را برای ایجاد cluster‌های جدید تعریف می‌کند. یک Helm chart حاوی CAPI object‌ها (Machine، Cluster و غیره) را می‌پوشاند.
+
+      **۲. ServiceTemplate**
+      سرویس‌ها، addon‌ها و workload‌ها را برای deploy روی cluster‌های موجود تعریف می‌کند. از Helm chart‌ها، Kustomize یا resource‌های خام پشتیبانی می‌کند.
+
+      **۳. ProviderTemplate**
+      CAPI provider‌ها (infrastructure، bootstrap، control-plane) را در معرض دید قرار می‌دهد. توسط k0rdent مدیریت می‌شود — معمولاً اینها را ایجاد نمی‌کنید.
+
+      همه template‌ها YAML-formatted هستند، از parameterization runtime پشتیبانی می‌کنند و از الگوی declarative پیروی می‌کنند.
+    examples:
+      - q: "سه نوع template در k0rdent چیست؟"
+        a: "ClusterTemplate (infrastructure)، ServiceTemplate (سرویس‌ها/اپ‌ها) و ProviderTemplate (CAPI provider‌ها)."
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["ClusterTemplate", "blueprint تغییرناپذیر برای infrastructure cluster، Helm + CAPI را می‌پوشاند"]
+          - ["ServiceTemplate", "blueprint تغییرناپذیر برای سرویس‌ها، از Helm/Kustomize/resource‌ها پشتیبانی می‌کند"]
+          - ["ProviderTemplate", "CAPI provider‌ها را در معرض دید قرار می‌دهد، توسط k0rdent مدیریت می‌شود"]
+
+      - type: select
+        q: "از کدام نوع template برای deploy nginx-ingress به یک cluster استفاده می‌کنید؟"
+        options:
+          - text: "ClusterTemplate"
+          - text: "ServiceTemplate"
+            correct: true
+          - text: "ProviderTemplate"
+        labels: ["Quiz"]
+
+  - title: "تغییرناپذیری Template"
+    image: "images/section-02-immutability.svg"
+    image_caption: "Template‌ها نمی‌توانند ویرایش شوند — به جای آن نسخه جدید بسازید"
+    explanation: |
+      یک اصل طراحی حیاتی: **template‌ها بعد از ایجاد تغییرناپذیر هستند**. نمی‌توانید spec یک template را پس از اعمال تغییر دهید.
+
+      برای ایجاد تغییرات باید:
+      1. یک **template جدید** با نام متفاوت بسازید (معمولاً با پسوند نسخه)
+      2. ClusterDeployment یا سرویس خود را به‌روز کنید تا به template جدید ارجاع دهد
+
+      این قابلیت تکرار و قابلیت حسابرسی را تضمین می‌کند — همیشه می‌دانید دقیقاً چه پیکربندی‌ای برای هر cluster استفاده شده است.
+    examples:
+      - q: "آیا می‌توانید یک ClusterTemplate را بعد از ایجاد ویرایش کنید؟"
+        a: "خیر. Template‌ها تغییرناپذیر هستند. برای هر تغییری باید یک template جدید با نام متفاوت بسازید."
+        labels: ["Templates", "k0rdent"]
+
+      - type: select
+        q: "باید نوع instance را در یک ClusterTemplate تغییر دهید. چه کاری می‌کنید؟"
+        options:
+          - text: "template موجود را با kubectl edit ویرایش می‌کنید"
+          - text: "یک template جدید با تغییر و نام نسخه جدید می‌سازید"
+            correct: true
+          - text: "حذف و با همان نام دوباره ایجاد می‌کنید"
+          - text: "spec template را patch می‌کنید"
+        labels: ["Quiz"]
+
+  - title: "Source Object‌ها"
+    image: "images/section-03-sources.svg"
+    image_caption: "Source object‌ها: HelmRepository، GitRepository، OCIRepository با managed label"
+    explanation: |
+      Template‌ها به **source object‌هایی** ارجاع می‌دهند که محتوای deploy واقعی را دارند. Source‌های پشتیبانی‌شده:
+
+      | Source | ClusterTemplate | ServiceTemplate | ProviderTemplate |
+      |--------|:-:|:-:|:-:|
+      | HelmRepository | بله | بله | بله |
+      | GitRepository | بله | بله | بله |
+      | OCIRepository | بله | بله | بله |
+      | Bucket | - | بله | - |
+      | ConfigMap | - | بله | - |
+      | Secret | - | بله | - |
+
+      Source object‌ها باید label `k0rdent.mirantis.com/managed: "true"` داشته باشند تا k0rdent آنها را شناسایی کند.
+    examples:
+      - q: "source object‌ها باید چه label‌ی داشته باشند؟"
+        a: 'k0rdent.mirantis.com/managed: "true"'
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["HelmRepository", "source object از Flux که به یک repository Helm chart اشاره می‌کند"]
+          - ["GitRepository", "source object از Flux که به یک repository Git اشاره می‌کند"]
+          - ["OCIRepository", "source object از Flux که به یک registry container OCI اشاره می‌کند"]
+
+      - type: multiple-choice
+        q: "کدام نوع source از ServiceTemplate پشتیبانی می‌کند اما ClusterTemplate نه؟ (چند گزینه)"
+        options:
+          - text: "Bucket"
+            correct: true
+          - text: "ConfigMap"
+            correct: true
+          - text: "HelmRepository"
+          - text: "Secret"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "ساختار ClusterTemplate"
+    image: "images/section-04-clustertemplate.svg"
+    image_caption: "ساختار YAML ClusterTemplate با helm.chartSpec و provider‌ها"
+    explanation: |
+      یک ClusterTemplate یک Helm chart را می‌پوشاند و تعریف می‌کند به کدام provider‌ها نیاز دارد:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplate
+      metadata:
+        name: custom-aws-standalone
+        namespace: project-ottowa
+      spec:
+        k8sVersion: 1.30.0
+        helm:
+          chartSpec:
+            chart: custom-standalone-cp
+            version: 1.0.1
+            sourceRef:
+              kind: HelmRepository
+              name: custom-repo
+        providers:
+          - bootstrap-k0sproject-k0smotron
+          - control-plane-k0sproject-k0smotron
+          - infrastructure-aws
+        providerContracts:
+          bootstrap-k0sproject-k0smotron: v1beta1
+          control-plane-k0sproject-k0smotron: v1beta1
+          infrastructure-aws: v1beta2
+      ```
+
+      فیلدهای کلیدی:
+      - `k8sVersion` — نسخه هدف Kubernetes برای بررسی سازگاری
+      - `helm.chartSpec` — به Helm chart اشاره می‌کند
+      - `providers` — CAPI provider‌های مورد نیاز
+      - `providerContracts` — نسخه‌های contract برای سازگاری
+    examples:
+      - q: "فیلد providers در یک ClusterTemplate چه چیزی را مشخص می‌کند؟"
+        a: "CAPI provider‌های مورد نیاز برای deploy این نوع cluster (مثلاً bootstrap، control-plane و infrastructure provider‌ها)."
+        labels: ["Templates", "k0rdent"]
+
+      - q: "چه روش‌های پیکربندی Helm در دسترس هستند؟"
+        a: "chartRef (ارجاع به HelmChart موجود)، chartSpec (تعریف chart inline) یا chartSource (source از Git/OCI)."
+        labels: ["Templates", "k0rdent"]
+
+  - title: "ساختار ServiceTemplate"
+    image: "images/section-05-servicetemplate.svg"
+    image_caption: "ساختار YAML ServiceTemplate با k8sConstraint و helmOptions"
+    explanation: |
+      ServiceTemplate‌ها تعریف می‌کنند اپلیکیشن‌ها چگونه به child cluster‌ها deploy شوند:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplate
+      metadata:
+        name: ingress-nginx-4.11.3
+        namespace: my-namespace
+      spec:
+        helm:
+          chartSpec:
+            chart: ingress-nginx
+            version: 4.11.3
+            interval: 10m0s
+            sourceRef:
+              kind: HelmRepository
+              name: k0rdent-catalog
+      ```
+
+      فیلدهای اختیاری اضافی:
+      - `spec.k8sConstraint` — سازگاری نسخه Kubernetes (مثلاً `">=1.28.0 <1.32.0"`)
+      - `spec.helmOptions` — کنترل `wait`، `atomic`، `timeout`، `createNamespace` و غیره
+    examples:
+      - q: "k8sConstraint در یک ServiceTemplate چه کاری انجام می‌دهد؟"
+        a: "تعریف می‌کند سرویس با کدام نسخه‌های Kubernetes سازگار است، با استفاده از syntax semver مثل '>=1.28.0 <1.32.0'."
+        labels: ["Templates", "Services"]
+        rel:
+          - ["k8sConstraint", "محدودیت سازگاری Kubernetes با فرمت SemVer روی ServiceTemplate‌ها"]
+          - ["helmOptions", "کنترل‌های رفتار کلی Helm (wait، atomic، timeout و غیره)"]
+
+      - type: input
+        q: "ServiceTemplate‌ها تغییرناپذیر هستند. درست یا نادرست؟"
+        a:
+          - "true"
+          - "True"
+          - "درست"
+        labels: ["Quiz"]
+
+  - title: "Template Chain‌ها"
+    image: "images/section-06-chains.svg"
+    image_caption: "ClusterTemplateChain مسیرهای ارتقاء معتبر بین نسخه‌های template را تعریف می‌کند"
+    explanation: |
+      **TemplateChain‌ها** مسیرهای ارتقاء معتبر بین نسخه‌های template را تعریف می‌کنند:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplateChain
+      metadata:
+        name: aws-standalone-cp
+      spec:
+        supportedTemplates:
+          - name: aws-standalone-cp-1-0-22
+          - name: aws-standalone-cp-1-0-20
+            availableUpgrades:
+              - name: aws-standalone-cp-1-0-22
+      ```
+
+      این chain می‌گوید: cluster‌هایی که از `aws-standalone-cp-1-0-20` استفاده می‌کنند می‌توانند به `aws-standalone-cp-1-0-22` ارتقاء دهند، اما به template‌های دلخواه دیگر نه.
+
+      ServiceTemplateChain‌ها به همین شکل برای ارتقاء سرویس کار می‌کنند.
+    examples:
+      - q: "TemplateChain‌ها چه چیزی را کنترل می‌کنند؟"
+        a: "مسیرهای ارتقاء معتبر را تعریف می‌کنند — کدام نسخه‌های template می‌توانند به کدام نسخه‌های جدیدتر ارتقاء دهند."
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["ClusterTemplateChain", "مسیرهای ارتقاء معتبر بین نسخه‌های ClusterTemplate را تعریف می‌کند"]
+          - ["ServiceTemplateChain", "مسیرهای ارتقاء معتبر بین نسخه‌های ServiceTemplate را تعریف می‌کند"]
+
+      - type: select
+        q: "اگر سعی کنید یک cluster را به template‌ای که در chain نیست به‌روز کنید چه اتفاقی می‌افتد؟"
+        options:
+          - text: "به‌روزرسانی به‌طور معمول انجام می‌شود"
+          - text: "به‌روزرسانی رد می‌شود چون مسیر ارتقاء تعریف نشده"
+            correct: true
+          - text: "cluster حذف و دوباره ایجاد می‌شود"
+          - text: "یک هشدار لاگ می‌شود اما به‌روزرسانی انجام می‌شود"
+        labels: ["Quiz"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-07-check.svg"
+    image_caption: "دانش خود را از سیستم template k0rdent آزمایش کنید"
+    explanation: "قبل از deploy دستی cluster، درک خود از template‌ها را آزمایش کنید!"
+    examples:
+      - q: "Template‌ها در k0rdent تغییرناپذیر هستند. این چه معنایی دارد؟"
+        type: input
+        a:
+          - "نمی‌توانید آنها را بعد از ایجاد تغییر دهید"
+          - "Template‌ها بعد از ایجاد نمی‌توانند تغییر کنند"
+          - "نمی‌توانند ویرایش شوند"
+        labels: ["Quiz"]
+      - q: "source object‌ها باید چه label‌ی داشته باشند تا k0rdent آنها را شناسایی کند؟"
+        type: select
+        options:
+          - text: "k0rdent.mirantis.com/source: true"
+          - text: 'k0rdent.mirantis.com/managed: "true"'
+            correct: true
+          - text: "flux.io/k0rdent: enabled"
+          - text: "app.kubernetes.io/managed-by: k0rdent"
+        labels: ["Quiz"]
+      - q: "کدام‌یک از این‌ها انواع template k0rdent هستند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "ClusterTemplate"
+            correct: true
+          - text: "ServiceTemplate"
+            correct: true
+          - text: "ProviderTemplate"
+            correct: true
+          - text: "DeploymentTemplate"
+        labels: ["Quiz"]

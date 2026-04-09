@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <defs><linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#0d1117"/><stop offset="100%" stop-color="#1a2540"/></linearGradient></defs>
+  <rect width="640" height="360" fill="url(#bg)" rx="12"/>
+  <circle cx="320" cy="160" r="80" fill="none" stroke="#58a6ff" stroke-width="1.5" stroke-opacity="0.4"/>
+  <circle cx="320" cy="160" r="50" fill="#1f6feb" fill-opacity="0.1" stroke="#58a6ff" stroke-width="1"/>
+  <text x="320" y="164" text-anchor="middle" font-family="monospace" font-size="13" fill="#58a6ff">k0rdent</text>
+  <text x="320" y="258" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#58a6ff">پشتیبان‌گیری و مشاهده‌پذیری</text>
+  <text x="320" y="290" text-anchor="middle" font-family="monospace" font-size="12" fill="#8b949e">Velero · ManagementBackup · KOF · OpenTelemetry</text>
+</svg>

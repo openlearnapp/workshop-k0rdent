@@ -1,0 +1,347 @@
+version: 2
+number: 7
+title: "Deploy اولین Cluster خود"
+description: "یک cluster k0s فرزند را با استفاده از Remote/SSH provider k0rdent به سرورهای Hetzner deploy کنید."
+image: "images/lesson-header.svg"
+image_caption: "ClusterDeployment اعمال شد — k0rdent با SSH روی Hetzner k0s را تأمین می‌کند"
+sections:
+  - title: "مرور کلی Deploy"
+    image: "images/section-01-overview.svg"
+    image_caption: "فرآیند ۸ مرحله‌ای deploy cluster با Remote/SSH provider"
+    explanation: |
+      Deploy یک cluster با k0rdent از یک **فرآیند ۸ مرحله‌ای** پیروی می‌کند:
+
+      1. ایجاد Credential object (در درس قبل انجام شد)
+      2. انتخاب ClusterTemplate
+      3. پیکربندی اختیاری ClusterAuthentication
+      4. نوشتن YAML ClusterDeployment
+      5. اعمال پیکربندی
+      6. تأیید ایجاد
+      7. نظارت بر تأمین
+      8. دریافت kubeconfig
+
+      برای Hetzner، یک cluster با استفاده از **remote/SSH** provider deploy می‌کنیم که k0s را از طریق SSH روی ماشین‌های هدف نصب می‌کند.
+    examples:
+      - q: "۸ مرحله deploy یک cluster با k0rdent چیست؟"
+        a: "ایجاد credential‌ها، انتخاب template، پیکربندی auth (اختیاری)، نوشتن YAML ClusterDeployment، اعمال، تأیید، نظارت و دریافت kubeconfig."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["ClusterDeployment", "CRD که وضعیت مطلوب یک cluster مدیریت‌شده را نمایش می‌دهد"]
+
+  - title: "آماده‌سازی Worker Node‌ها روی Hetzner"
+    image: "images/section-02-worker-nodes.svg"
+    image_caption: "ایجاد ۱-۲ سرور Hetzner به‌عنوان worker node با دسترسی SSH"
+    explanation: |
+      ۱-۲ سرور Hetzner اضافی بسازید که worker node‌های child cluster شما می‌شوند:
+
+      **نیازمندی‌ها:**
+      - Linux OS (Ubuntu 22.04 توصیه می‌شود)
+      - دسترسی SSH root فعال
+      - اتصال به اینترنت
+      - اتصال شبکه به management cluster
+
+      **مراحل:**
+      1. در Hetzner Cloud Console، ۱-۲ سرور بسازید (مثلاً CX21 — 2 vCPU، 4 گیگابایت RAM)
+      2. از **همان SSH key** مانند management cluster استفاده کنید
+      3. آدرس‌های IP عمومی هر worker را یادداشت کنید
+
+      ```bash
+      # اتصال SSH از management cluster را آزمایش کنید
+      ssh root@WORKER_IP_1 "hostname"
+      ssh root@WORKER_IP_2 "hostname"
+      ```
+    examples:
+      - q: "نیازمندی‌های remote worker node‌ها چیست؟"
+        a: "Linux OS، دسترسی SSH root، اتصال به اینترنت و اتصال شبکه به management cluster."
+        labels: ["Cluster", "k0rdent"]
+
+      - type: multiple-choice
+        q: "چه چیزی باید در مورد worker node‌ها صادق باشد؟ (چند گزینه)"
+        options:
+          - text: "دسترسی SSH root باید فعال باشد"
+            correct: true
+          - text: "باید همان توزیع Linux را اجرا کنند"
+          - text: "باید اتصال به اینترنت داشته باشند"
+            correct: true
+          - text: "باید Kubernetes از قبل نصب شده باشد"
+        labels: ["Quiz"]
+
+  - title: "ایجاد SSH Credential"
+    image: "images/section-03-ssh-credential.svg"
+    image_caption: "ایجاد SSH Secret، Credential و resource-template ConfigMap"
+    explanation: |
+      اگر در درس قبل انجام نداده‌اید، SSH credential را بسازید:
+
+      ```bash
+      export KEY_PATH=~/.ssh/id_ed25519
+      export PRIVATE_SSH_KEY_B64=$(cat $KEY_PATH | base64 -w 0)
+      export SECRET_NAME=remote-ssh-key
+      export CREDENTIAL_NAME=remote-cred
+      ```
+
+      Secret را اعمال کنید:
+      ```bash
+      cat <<EOF | kubectl apply -f -
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: ${SECRET_NAME}
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+      type: Opaque
+      data:
+        value: ${PRIVATE_SSH_KEY_B64}
+      EOF
+      ```
+
+      Credential را اعمال کنید:
+      ```bash
+      cat <<EOF | kubectl apply -f -
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: ${CREDENTIAL_NAME}
+        namespace: kcm-system
+      spec:
+        identityRef:
+          apiVersion: v1
+          kind: Secret
+          name: ${SECRET_NAME}
+          namespace: kcm-system
+      EOF
+      ```
+
+      resource template ConfigMap مورد نیاز را بسازید:
+      ```bash
+      cat <<EOF | kubectl apply -f -
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: remote-ssh-key-resource-template
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+        annotations:
+          projectsveltos.io/template: "true"
+      EOF
+      ```
+    examples:
+      - q: "چرا به ConfigMap remote-ssh-key-resource-template نیاز داریم؟"
+        a: "توسط remote provider k0rdent برای نیازهای templating آینده لازم است. فقط metadata دارد — بدون مقدار data واقعی."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["remote-ssh-key-resource-template", "ConfigMap مورد نیاز برای راه‌اندازی credential remote/SSH"]
+
+  - title: "انتخاب Template و Deploy"
+    image: "images/section-04-deploy.svg"
+    image_caption: "YAML ClusterDeployment با remote-cluster template و SSH credential"
+    explanation: |
+      template‌های remote موجود را فهرست کنید:
+      ```bash
+      kubectl get clustertemplate -n kcm-system | grep remote
+      ```
+
+      به دنبال template‌ای مثل `remote-cluster-1-0-19` بگردید. حالا ClusterDeployment را بسازید:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterDeployment
+      metadata:
+        name: my-hetzner-cluster
+        namespace: kcm-system
+      spec:
+        template: remote-cluster-1-0-19
+        credential: remote-cred
+        propagateCredentials: false
+        config:
+          k0smotron:
+            service:
+              type: NodePort
+          machines:
+          - address: WORKER_IP_1
+            user: root
+            port: 22
+          - address: WORKER_IP_2
+            user: root
+            port: 22
+      ```
+
+      **نکات مهم:**
+      - `WORKER_IP_1` و `WORKER_IP_2` را با IP‌های واقعی جایگزین کنید
+      - برای Hetzner از `NodePort` استفاده کنید (بدون LoadBalancer داخلی)
+      - از نام دقیق template از `kubectl get clustertemplate` استفاده کنید
+
+      اعمال کنید:
+      ```bash
+      kubectl apply -f my-hetzner-cluster.yaml
+      ```
+    examples:
+      - q: "چرا به جای LoadBalancer از NodePort برای Hetzner استفاده می‌کنیم؟"
+        a: "Hetzner یکپارچه‌سازی cloud LoadBalancer داخلی برای Kubernetes ندارد. NodePort بدون cloud provider کار می‌کند."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["NodePort", "نوع سرویس Kubernetes که یک پورت را روی هر node در معرض دید قرار می‌دهد"]
+          - ["LoadBalancer", "نوع سرویس Kubernetes که یک cloud load balancer تأمین می‌کند"]
+          - ["propagateCredentials", "آیا credential‌ها به Node‌های child cluster منتشر شوند"]
+
+      - type: select
+        q: "چه نوع سرویسی باید برای k0smotron روی Hetzner استفاده کنید؟"
+        options:
+          - text: "LoadBalancer"
+          - text: "ClusterIP"
+          - text: "NodePort"
+            correct: true
+          - text: "ExternalName"
+        labels: ["Quiz"]
+
+  - title: "نظارت و تأیید"
+    image: "images/section-05-monitor.svg"
+    image_caption: "نظارت بر تأمین cluster از طریق kubectl و clusterctl"
+    explanation: |
+      نظارت بر تأمین cluster:
+
+      ```bash
+      # وضعیت cluster را نظارت کنید
+      kubectl -n kcm-system get clusters.cluster.x-k8s.io \
+        my-hetzner-cluster --watch
+
+      # وضعیت remote machine را بررسی کنید
+      kubectl -n kcm-system get remotemachines.infrastructure.cluster.x-k8s.io \
+        -l helm.toolkit.fluxcd.io/name=my-hetzner-cluster \
+        -o=jsonpath='{.items[*].status}'
+      ```
+
+      خروجی موفق: `{"ready":true}{"ready":true}`
+
+      برای وضعیت دقیق:
+      ```bash
+      kubectl -n kcm-system get clusterdeployment.kcm \
+        my-hetzner-cluster -o=yaml
+      ```
+
+      همچنین می‌توانید از `clusterctl` برای نمای کلی استفاده کنید:
+      ```bash
+      clusterctl describe cluster my-hetzner-cluster \
+        -n kcm-system --show-conditions all
+      ```
+    examples:
+      - q: "چطور بررسی می‌کنید remote machine‌ها آماده هستند؟"
+        a: "kubectl get remotemachines با label selector و بررسی {\"ready\":true} در status."
+        labels: ["Cluster", "CLI"]
+        rel:
+          - ["remotemachines", "CRD که ماشین‌های remote مدیریت‌شده از طریق SSH را نمایش می‌دهد"]
+          - ["clusterctl", "ابزار CLI برای عملیات و تشخیص Cluster API"]
+
+  - title: "دریافت Kubeconfig"
+    image: "images/section-06-kubeconfig.svg"
+    image_caption: "دریافت و استفاده از kubeconfig child cluster"
+    explanation: |
+      وقتی cluster آماده شد، kubeconfig را دریافت کنید:
+
+      ```bash
+      kubectl -n kcm-system get secret \
+        my-hetzner-cluster-kubeconfig \
+        -o jsonpath='{.data.value}' | base64 -d \
+        > my-hetzner-cluster.kubeconfig
+      ```
+
+      اتصال را تأیید کنید:
+      ```bash
+      KUBECONFIG=my-hetzner-cluster.kubeconfig kubectl get nodes
+      KUBECONFIG=my-hetzner-cluster.kubeconfig kubectl get pods -A
+      ```
+
+      حالا یک child cluster کاملاً کارکردی دارید که توسط k0rdent مدیریت می‌شود!
+
+      برای فهرست کردن همه cluster‌های خود:
+      ```bash
+      kubectl get ClusterDeployments -A
+      ```
+    examples:
+      - q: "kubeconfig child cluster کجا ذخیره می‌شود؟"
+        a: "در یک Secret با نام <cluster-name>-kubeconfig در همان namespace با ClusterDeployment."
+        labels: ["Cluster", "CLI"]
+
+      - type: input
+        q: "چه دستوری همه ClusterDeployment‌ها را فهرست می‌کند؟"
+        a:
+          - "kubectl get ClusterDeployments -A"
+          - "kubectl get clusterdeployments -A"
+          - "kubectl get clusterdeployment -A"
+        labels: ["Quiz"]
+
+  - title: "فیلدهای کلیدی ClusterDeployment"
+    image: "images/section-07-fields.svg"
+    image_caption: "فیلدهای spec ClusterDeployment: template، credential، dryRun، cleanupOnDeletion"
+    explanation: |
+      درک spec ClusterDeployment:
+
+      ```yaml
+      spec:
+        template: <template-name>      # کدام ClusterTemplate استفاده شود
+        credential: <credential-name>   # کدام Credential برای احراز هویت
+        dryRun: true/false              # شبیه‌سازی بدون تأمین
+        cleanupOnDeletion: true/false   # حذف resource‌های orphaned هنگام حذف
+        config:
+          clusterLabels: {}             # label‌های cluster
+          region: <region>              # منطقه هدف
+          controlPlane:
+            instanceType: <type>        # اندازه instance control plane
+          worker:
+            instanceType: <type>        # اندازه instance worker
+      ```
+
+      **فلگ‌های مفید:**
+      - `dryRun: true` — پیکربندی را بدون ایجاد resource‌ها اعتبارسنجی می‌کند
+      - `cleanupOnDeletion: true` — سرویس‌های LoadBalancer و دستگاه‌های ذخیره‌سازی orphaned را هنگام حذف cluster پاک می‌کند
+    examples:
+      - q: "dryRun: true چه کاری انجام می‌دهد؟"
+        a: "deploy را شبیه‌سازی می‌کند تا پیکربندی را بدون تأمین واقعی resource‌های cloud اعتبارسنجی کند."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["dryRun", "deploy را بدون تأمین resource‌ها شبیه‌سازی می‌کند"]
+          - ["cleanupOnDeletion", "resource‌های orphaned را هنگام حذف cluster پاک می‌کند"]
+
+      - type: select
+        q: "می‌خواهید YAML ClusterDeployment را قبل از ایجاد resource‌های واقعی اعتبارسنجی کنید. کدام فیلد را تنظیم می‌کنید؟"
+        options:
+          - text: "validate: true"
+          - text: "dryRun: true"
+            correct: true
+          - text: "testMode: true"
+          - text: "preview: true"
+        labels: ["Quiz"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-08-check.svg"
+    image_caption: "دانش خود را از deploy cluster Kubernetes با k0rdent آزمایش کنید"
+    explanation: "درک خود از فرآیند deploy cluster را آزمایش کنید!"
+    examples:
+      - q: "kubeconfig child cluster بعد از deploy کجا ذخیره می‌شود؟"
+        type: input
+        a:
+          - "در یک Secret با نام <cluster-name>-kubeconfig"
+          - "یک Secret با نام <cluster-name>-kubeconfig"
+          - "در یک Kubernetes Secret"
+        labels: ["Quiz"]
+      - q: "فیلد dryRun در ClusterDeployment چه کاری انجام می‌دهد؟"
+        type: select
+        options:
+          - text: "cluster را در یک محیط آزمایشی می‌سازد"
+          - text: "پیکربندی را بدون تأمین resource‌های واقعی اعتبارسنجی می‌کند"
+            correct: true
+          - text: "یک cluster تک-Node حداقلی deploy می‌کند"
+          - text: "health check روی cluster‌های موجود اجرا می‌کند"
+        labels: ["Quiz"]
+      - q: "کدام‌یک در spec ClusterDeployment الزامی است؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "template — ClusterTemplate مورد استفاده"
+            correct: true
+          - text: "credential — Credential برای احراز هویت"
+            correct: true
+          - text: "dryRun — همیشه الزامی است"
+          - text: "config — پارامترهای خاص template"
+            correct: true
+        labels: ["Quiz"]

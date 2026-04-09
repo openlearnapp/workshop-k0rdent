@@ -1,0 +1,305 @@
+version: 2
+number: 9
+title: "کار با سرویس‌ها (KSM)"
+description: "Deploy و مدیریت اپلیکیشن‌ها روی child cluster‌ها با استفاده از k0rdent State Manager و ServiceTemplate‌ها."
+image: "images/lesson-header.svg"
+image_caption: "KSM در حال deploy سرویس‌ها به child cluster‌ها از طریق ProjectSveltos"
+sections:
+  - title: "مرور کلی KSM"
+    image: "images/section-01-ksm-overview.svg"
+    image_caption: "معماری KSM: ProjectSveltos به‌عنوان راه‌حل CD داخلی"
+    explanation: |
+      **k0rdent State Manager (KSM)** مدیریت متمرکز اپلیکیشن‌های deploy‌شده روی child cluster‌ها را فراهم می‌کند.
+
+      قابلیت‌های کلیدی:
+      - **مدیریت سرویس declarative** — تعریف کنید چه چیزی کجا باید deploy شود
+      - **انعطاف‌پذیری provider** — ProjectSveltos داخلی یا راه‌حل‌های CD سفارشی
+      - **کنترل متمرکز** — مدیریت همه سرویس‌ها از management cluster
+      - **مدیریت lifecycle** — deploy، scale، update، upgrade و teardown
+
+      KSM از معماری "provider" استفاده می‌کند. **provider داخلی** از ProjectSveltos استفاده می‌کند، اما می‌توانید provider‌های سفارشی با راه‌حل‌های CD جایگزین بسازید.
+    examples:
+      - q: "KSM چیست؟"
+        a: "k0rdent State Manager — مدیریت متمرکز اپلیکیشن‌ها و سرویس‌های deploy‌شده روی child cluster‌ها."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["KSM", "k0rdent State Manager برای مدیریت lifecycle سرویس"]
+          - ["ProjectSveltos", "راه‌حل CD داخلی که توسط KSM استفاده می‌شود"]
+          - ["Built-in provider", "provider پیش‌فرض KSM که توسط ProjectSveltos پشتیبانی می‌شود"]
+
+      - type: select
+        q: "KSM از چه راه‌حل CD داخلی استفاده می‌کند؟"
+        options:
+          - text: "ArgoCD"
+          - text: "FluxCD"
+          - text: "ProjectSveltos"
+            correct: true
+          - text: "Jenkins"
+        labels: ["Quiz"]
+
+  - title: "ایجاد یک ServiceTemplate"
+    image: "images/section-02-servicetemplate.svg"
+    image_caption: "ایجاد HelmRepository + ServiceTemplate برای nginx-ingress"
+    explanation: |
+      ServiceTemplate‌ها تعریف می‌کنند اپلیکیشن‌ها چگونه deploy شوند. مثالی برای nginx-ingress:
+
+      **مرحله ۱: ایجاد HelmRepository source** (اگر از قبل موجود نیست):
+      ```yaml
+      apiVersion: source.toolkit.fluxcd.io/v1
+      kind: HelmRepository
+      metadata:
+        name: ingress-nginx-repo
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/managed: "true"
+      spec:
+        url: https://kubernetes.github.io/ingress-nginx
+        interval: 10m
+      ```
+
+      **مرحله ۲: ایجاد ServiceTemplate:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplate
+      metadata:
+        name: ingress-nginx-4.11.3
+        namespace: kcm-system
+      spec:
+        helm:
+          chartSpec:
+            chart: ingress-nginx
+            version: 4.11.3
+            interval: 10m0s
+            sourceRef:
+              kind: HelmRepository
+              name: ingress-nginx-repo
+      ```
+
+      **مرحله ۳: تأیید:**
+      ```bash
+      kubectl get servicetemplate -n kcm-system
+      ```
+
+      template باید `VALID: true` نشان دهد.
+    examples:
+      - q: "دو object مورد نیاز برای ایجاد ServiceTemplate مبتنی بر Helm چیست؟"
+        a: "یک HelmRepository source object (با label k0rdent.mirantis.com/managed) و خود ServiceTemplate."
+        labels: ["Services", "Templates"]
+
+      - type: input
+        q: "source object‌ها باید چه label‌ی داشته باشند تا k0rdent آنها را شناسایی کند؟"
+        a:
+          - "k0rdent.mirantis.com/managed: \"true\""
+          - 'k0rdent.mirantis.com/managed: "true"'
+        labels: ["Quiz"]
+
+  - title: "اضافه کردن سرویس‌ها به یک Cluster"
+    image: "images/section-03-add-services.svg"
+    image_caption: "آرایه serviceSpec.services در ClusterDeployment — اضافه کردن سرویس‌ها از طریق patch"
+    explanation: |
+      سرویس‌ها را با استفاده از `serviceSpec` به یک ClusterDeployment موجود اضافه کنید:
+
+      ```yaml
+      spec:
+        serviceSpec:
+          services:
+            - template: ingress-nginx-4.11.3
+              name: ingress-nginx
+              namespace: ingress-nginx
+          priority: 100
+      ```
+
+      می‌توانید یک ClusterDeployment موجود را patch کنید:
+      ```bash
+      kubectl patch clusterdeployment my-hetzner-cluster \
+        -n kcm-system --type='merge' \
+        -p '{
+          "spec": {
+            "serviceSpec": {
+              "services": [
+                {
+                  "template": "ingress-nginx-4.11.3",
+                  "name": "ingress-nginx",
+                  "namespace": "ingress-nginx"
+                }
+              ]
+            }
+          }
+        }'
+      ```
+    examples:
+      - q: "چطور یک سرویس به یک cluster موجود اضافه می‌کنید؟"
+        a: "آرایه spec.serviceSpec.services ClusterDeployment را با ارجاع service template patch می‌کنید."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["serviceSpec", "بخشی از ClusterDeployment که سرویس‌های deploy را تعریف می‌کند"]
+          - ["priority", "مقدار عددی برای حل تعارض — اعداد بالاتر برنده می‌شوند"]
+
+      - type: select
+        q: "آیا می‌توانید بعد از اجرای cluster سرویس اضافه کنید؟"
+        options:
+          - text: "خیر — سرویس‌ها باید هنگام ایجاد cluster تعریف شوند"
+          - text: "بله — serviceSpec ClusterDeployment را patch کنید"
+            correct: true
+          - text: "فقط از طریق dashboard k0rdent"
+        labels: ["Quiz"]
+
+  - title: "انواع Source در ServiceTemplate"
+    image: "images/section-04-source-types.svg"
+    image_caption: "سه نوع source در ServiceTemplate: Helm، Kustomize، resource‌های خام"
+    explanation: |
+      ServiceTemplate‌ها از سه روش deploy پشتیبانی می‌کنند:
+
+      **۱. Helm Chart‌ها** (متداول‌ترین)
+      ```yaml
+      spec:
+        helm:
+          chartSpec:
+            chart: my-chart
+            version: 1.0.0
+            sourceRef:
+              kind: HelmRepository
+              name: my-repo
+      ```
+
+      **۲. Kustomize**
+      ```yaml
+      spec:
+        kustomize:
+          localSourceRef:
+            kind: GitRepository
+            name: my-repo
+          deploymentType: Remote
+          path: "./overlays/production"
+      ```
+
+      **۳. Resource‌های خام**
+      با استفاده از ConfigMap‌ها یا Secret‌های حاوی manifest‌های Kubernetes:
+      ```yaml
+      spec:
+        resources:
+          localSourceRef:
+            kind: ConfigMap
+            name: my-manifests
+      ```
+
+      نوع‌های source باهم منحصربه‌فرد هستند — هر ServiceTemplate دقیقاً از یکی استفاده می‌کند.
+    examples:
+      - q: "سه روش deploy که ServiceTemplate‌ها پشتیبانی می‌کنند چیست؟"
+        a: "Helm chart‌ها، Kustomize و resource‌های خام (از طریق ConfigMap/Secret)."
+        labels: ["Services", "Templates"]
+        rel:
+          - ["Kustomize", "مدیریت پیکربندی native Kubernetes با استفاده از overlay‌ها"]
+          - ["Raw resources", "manifest‌های مستقیم Kubernetes در ConfigMap یا Secret"]
+
+      - type: multiple-choice
+        q: "کدام‌یک نوع source معتبر ServiceTemplate هستند؟ (چند گزینه)"
+        options:
+          - text: "Helm chart‌ها"
+            correct: true
+          - text: "Kustomize"
+            correct: true
+          - text: "ماژول‌های Terraform"
+          - text: "resource‌های خام از طریق ConfigMap"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "بررسی وضعیت سرویس"
+    image: "images/section-05-status.svg"
+    image_caption: "دستورات kubectl برای بررسی اعتبارسنجی ServiceTemplate و وضعیت deploy"
+    explanation: |
+      وضعیت deploy سرویس را نظارت کنید:
+
+      ```bash
+      # اعتبارسنجی ServiceTemplate را بررسی کنید
+      kubectl get servicetemplate -A
+
+      # خطاهای اعتبارسنجی را بررسی کنید
+      kubectl get servicetemplate ingress-nginx-4.11.3 \
+        -n kcm-system \
+        -o jsonpath='{.status.validationError}'
+
+      # وضعیت دقیق
+      kubectl describe servicetemplate ingress-nginx-4.11.3 \
+        -n kcm-system
+      ```
+
+      وضعیت deploy سرویس در status ClusterDeployment هم ظاهر می‌شود:
+      ```bash
+      kubectl get clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system -o yaml
+      ```
+
+      به بخش `serviceConditions` در status نگاه کنید.
+    examples:
+      - q: "چطور بررسی می‌کنید یک ServiceTemplate معتبر است؟"
+        a: "kubectl get servicetemplate -A وضعیت VALID را نشان می‌دهد، یا .status.validationError را برای خطاها بررسی کنید."
+        labels: ["Services", "CLI"]
+
+  - title: "سرویس‌های Beach-Head"
+    image: "images/section-06-beachhead.svg"
+    image_caption: "سرویس‌های beach-head ضروری: ingress، CNI، CSI، cert-manager، monitoring"
+    explanation: |
+      **سرویس‌های beach-head** سرویس‌های ضروری هستند که یک cluster Kubernetes را برای production آماده می‌کنند:
+
+      - **Ingress controller** (مثلاً nginx-ingress)
+      - **CNI plugin** (مثلاً Calico، Cilium)
+      - **CSI driver** (مثلاً برای ذخیره‌سازی دائمی)
+      - **Cert-manager** (برای گواهینامه‌های TLS)
+      - **Monitoring** (مثلاً Prometheus، Grafana)
+
+      اینها معمولاً از طریق ServiceTemplate‌ها به‌عنوان بخشی از راه‌اندازی هر cluster deploy می‌شوند.
+    examples:
+      - q: "سرویس‌های beach-head چیستند؟"
+        a: "سرویس‌های ضروری Kubernetes (ingress، CNI، CSI، cert-manager) که یک cluster را واقعاً برای workload‌های production مفید می‌کنند."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["Beach-head services", "سرویس‌های ضروری cluster: ingress، CNI، CSI، cert-manager، monitoring"]
+          - ["CNI", "Container Network Interface — plugin شبکه‌سازی برای Kubernetes"]
+          - ["CSI", "Container Storage Interface — plugin ذخیره‌سازی برای Kubernetes"]
+
+      - type: multiple-choice
+        q: "کدام‌یک سرویس beach-head محسوب می‌شوند؟ (چند گزینه)"
+        options:
+          - text: "Ingress controller"
+            correct: true
+          - text: "پایگاه داده‌های اپلیکیشن"
+          - text: "CNI plugin"
+            correct: true
+          - text: "CSI driver"
+            correct: true
+          - text: "اپ‌های وب رو به کاربر"
+        labels: ["Quiz"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-07-check.svg"
+    image_caption: "دانش خود را از KSM و مدیریت سرویس در k0rdent آزمایش کنید"
+    explanation: "درک خود از deploy و مدیریت سرویس‌ها با KSM را آزمایش کنید!"
+    examples:
+      - q: "کدام component k0rdent سرویس‌ها را به child cluster‌ها deploy می‌کند؟"
+        type: input
+        a:
+          - "KSM"
+          - "k0rdent State Manager"
+          - "KSM (k0rdent State Manager)"
+        labels: ["Quiz"]
+      - q: "چطور یک سرویس را به یک cluster خاص در k0rdent متصل می‌کنید؟"
+        type: select
+        options:
+          - text: "مستقیماً یک Helm release روی child cluster بسازید"
+          - text: "ارجاع serviceTemplate را به serviceSpec ClusterDeployment اضافه کنید"
+            correct: true
+          - text: "به worker node‌ها SSH بزنید و سرویس را دستی نصب کنید"
+          - text: "یک ServiceTemplate با نام cluster در metadata بسازید"
+        labels: ["Quiz"]
+      - q: "ServiceTemplate‌ها می‌توانند از کدام نوع source استفاده کنند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "HelmRepository"
+            correct: true
+          - text: "GitRepository"
+            correct: true
+          - text: "ConfigMap (resource‌های خام)"
+            correct: true
+          - text: "فایل‌های state Terraform"
+        labels: ["Quiz"]

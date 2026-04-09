@@ -1,0 +1,225 @@
+version: 2
+number: 2
+title: "خوش آمدید به k0rdent"
+description: "بفهمید k0rdent چیست، چرا وجود دارد و معماری آن برای مدیریت Kubernetes در مقیاس بزرگ."
+image: "images/lesson-header.svg"
+image_caption: "k0rdent management cluster که child cluster ها را در provider های مختلف کنترل می‌کند"
+sections:
+  - title: "k0rdent چیست؟"
+    image: "images/section-01-what-is-k0rdent.svg"
+    image_caption: "k0rdent به عنوان super control plane با component های KCM، KSM و KOF"
+    explanation: |
+      **k0rdent** یک پلتفرم مدیریت lifecycle Kubernetes است — یک *super control plane* که برای مدیریت cluster های Kubernetes در مقیاس بزرگ از طریق provision و lifecycle management مرکزی و template-driven طراحی شده است.
+
+      بر اساس سه پیش‌فرض اصلی ساخته شده است:
+
+      - Kubernetes و اکوسیستم آن **بالغ و ذاتاً پایدار** هستند
+      - پذیرش Kubernetes در مقیاس بزرگ deployment را **همه‌جا** ممکن می‌کند
+      - استانداردهای community و open source **ریسک پذیرش را کاهش می‌دهند**
+
+      k0rdent ابزارهای open source اثبات‌شده (Cluster API، Flux، Sveltos، k0smotron، Velero) را در یک چارچوب lifecycle management منسجم یکپارچه می‌کند.
+    examples:
+      - q: "k0rdent چیست؟"
+        a: "یک super control plane Kubernetes برای lifecycle management cluster متمرکز و template-driven در مقیاس بزرگ."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["k0rdent", "پلتفرم lifecycle management Kubernetes (super control plane)"]
+          - ["KCM", "k0rdent Cluster Manager — deploy و lifecycle management cluster ها"]
+          - ["KSM", "k0rdent State Manager — نصب و lifecycle management service ها"]
+          - ["KOF", "k0rdent Observability & FinOps — monitoring، رویدادها و مدیریت log"]
+
+      - q: "k0rdent چه مشکلی را حل می‌کند؟"
+        a: "یک پلتفرم یکپارچه برای provision، به‌روزرسانی و مدیریت بسیاری از cluster های Kubernetes در چندین cloud و زیرساخت فراهم می‌کند."
+        labels: ["k0rdent", "Basics"]
+
+      - type: select
+        q: "k0rdent بهتر است به عنوان چه چیزی توصیف شود:"
+        options:
+          - text: "یک توزیع Kubernetes مثل k0s یا k3s"
+          - text: "یک super control plane برای مدیریت cluster های Kubernetes در مقیاس بزرگ"
+            correct: true
+          - text: "یک ابزار CI/CD pipeline"
+          - text: "یک container runtime"
+        labels: ["Quiz"]
+
+  - title: "چرا k0rdent؟"
+    image: "images/section-02-why.svg"
+    image_caption: "چهار چالشی که k0rdent آن‌ها را رسیدگی می‌کند: پیچیدگی، platform engineering، توزیع، open source"
+    explanation: |
+      k0rdent برای رسیدگی به چهار چالش اصلی ایجاد شده است:
+
+      1. **پیچیدگی برنامه** — workload های مدرن (AI/ML، microservices) نیاز به deployment سریع و زیرساخت تخصصی دارند
+      2. **Platform Engineering** — سازمان‌ها به Internal Developer Platforms (IDP) نیاز دارند
+      3. **زیرساخت توزیع‌شده** — deployment های توزیع‌شده هنجار جدید هستند
+      4. **Open Source** — استفاده از اکوسیستم Kubernetes استقلال از vendor و ابزارهای اثبات‌شده را فراهم می‌کند
+    examples:
+      - q: "چهار دلیل وجود k0rdent چیست؟"
+        a: "پیچیدگی برنامه، نیازهای platform engineering، مدیریت زیرساخت توزیع‌شده و استفاده از اکوسیستم open source."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["IDP", "Internal Developer Platform — قابلیت‌های self-service برای developers"]
+          - ["Platform Engineering", "تمرین ساختن و نگهداری پلتفرم‌های internal developer"]
+
+      - type: multiple-choice
+        q: "k0rdent کدام چالش‌ها را رسیدگی می‌کند؟ (چند گزینه)"
+        options:
+          - text: "پیچیدگی رو به رشد برنامه و workload"
+            correct: true
+          - text: "نیاز به internal developer platform ها"
+            correct: true
+          - text: "جایگزینی container runtime ها"
+          - text: "مدیریت زیرساخت توزیع‌شده در مقیاس بزرگ"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "مرور کلی معماری"
+    image: "images/section-03-architecture.svg"
+    image_caption: "معماری سه component‌ای k0rdent: KCM، KSM، KOF"
+    explanation: |
+      k0rdent سه component اصلی دارد:
+
+      **KCM (k0rdent Cluster Manager)**
+      - قابلیت‌های CAPI (Cluster API) را می‌پوشاند
+      - provision cluster را در provider ها orchestrate می‌کند
+      - k0smotron را برای bootstrap k0s و hosted control planes یکپارچه می‌کند
+
+      **KSM (k0rdent State Manager)**
+      - lifecycle management service ها و برنامه‌ها روی child cluster ها
+      - از ProjectSveltos به عنوان راه‌حل CD داخلی استفاده می‌کند
+      - deploy، scale، update، upgrade و teardown service ها
+
+      **KOF (k0rdent Observability & FinOps)**
+      - observability enterprise از طریق OpenTelemetry
+      - metric ها، logging و مدیریت هزینه متمرکز
+
+      معماری از مدل **management cluster → child cluster** پیروی می‌کند.
+    examples:
+      - q: "سه component اصلی k0rdent چیست؟"
+        a: "KCM (Cluster Manager)، KSM (State Manager) و KOF (Observability & FinOps)."
+        labels: ["k0rdent", "Basics"]
+
+      - q: "management cluster چیست؟"
+        a: "cluster Kubernetes‌ای که k0rdent روی آن نصب شده است و از آن همه cluster های مدیریت‌شده دیگر کنترل می‌شوند."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["Management Cluster", "cluster‌ای که k0rdent روی آن نصب و اجرا می‌شود"]
+          - ["Child Cluster", "cluster‌ای که توسط management cluster provision و مدیریت می‌شود"]
+          - ["CAPI", "Cluster API — lifecycle management cluster Kubernetes اعلامی"]
+          - ["k0smotron", "ابزار برای اجرای control plane های k0s به عنوان pod در management cluster"]
+          - ["ProjectSveltos", "controller add-on Kubernetes open source که توسط KSM استفاده می‌شود"]
+
+      - type: select
+        q: "کدام component مسئول deploy service ها به child cluster ها است؟"
+        options:
+          - text: "KCM (Cluster Manager)"
+          - text: "KSM (State Manager)"
+            correct: true
+          - text: "KOF (Observability & FinOps)"
+          - text: "مستقیماً CAPI"
+        labels: ["Quiz"]
+
+  - title: "نقش‌های سازمانی"
+    image: "images/section-04-roles.svg"
+    image_caption: "سه نقش سازمانی: Platform Architect، Lead و Engineer"
+    explanation: |
+      k0rdent سه نقش سازمانی تعریف می‌کند:
+
+      | نقش | مسئولیت |
+      |-----|---------|
+      | **Platform Architect** | طراحی پلتفرم‌های abstract، ایجاد template های قابل استفاده مجدد |
+      | **Platform Lead** | تطبیق template ها با cloud های خاص، مدیریت کنترل دسترسی |
+      | **Platform Engineer** | مدیریت روزانه، استفاده از template های مجاز، شخصی‌سازی service ها |
+
+      این جداسازی تضمین می‌کند که credential ها و پیکربندی‌های پیچیده توسط Lead ها مدیریت شوند.
+    examples:
+      - q: "چه کسی template های قابل استفاده مجدد در k0rdent ایجاد می‌کند؟"
+        a: "Platform Architect پلتفرم‌های abstract طراحی می‌کند و template های قابل استفاده مجدد ایجاد می‌کند."
+        labels: ["k0rdent", "Security"]
+        rel:
+          - ["Platform Architect", "پلتفرم‌ها را طراحی می‌کند و template های قابل استفاده مجدد ایجاد می‌کند"]
+          - ["Platform Lead", "template ها را تطبیق می‌دهد، کنترل دسترسی و credential ها را مدیریت می‌کند"]
+          - ["Platform Engineer", "مدیریت روزانه cluster و service"]
+
+      - type: select
+        q: "چه کسی باید دسترسی مستقیم به credential های cloud provider داشته باشد؟"
+        options:
+          - text: "همه platform engineer ها"
+          - text: "فقط platform lead"
+            correct: true
+          - text: "فقط platform architect"
+          - text: "هیچ‌کس — credential ها به‌صورت خودکار تولید می‌شوند"
+        labels: ["Quiz"]
+
+  - title: "Provider های پشتیبانی‌شده"
+    image: "images/section-05-providers.svg"
+    image_caption: "k0rdent از AWS، Azure، GCP، vSphere، OpenStack، KubeVirt و Remote/SSH پشتیبانی می‌کند"
+    explanation: |
+      k0rdent از چندین infrastructure provider به‌صورت built-in پشتیبانی می‌کند:
+
+      - **AWS** (CAPA) — cluster های standalone و EKS
+      - **Azure** (CAPZ) — cluster های standalone و AKS
+      - **GCP** (CAPG) — cluster های standalone و GKE
+      - **vSphere** (CAPV) — محیط‌های VMware
+      - **OpenStack** (CAPO) — cloud خصوصی
+      - **KubeVirt** — virtualization native Kubernetes
+      - **Remote/SSH** — bare metal یا هر ماشین Linux با دسترسی SSH
+
+      در این کارگاه روی **Hetzner** با **Remote/SSH** provider تمرکز خواهیم کرد.
+    examples:
+      - q: "از کدام provider برای Hetzner در k0rdent استفاده می‌کنیم؟"
+        a: "Remote/SSH provider که cluster های k0s را از طریق SSH روی هر ماشین Linux deploy می‌کند."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["CAPA", "Cluster API Provider برای AWS"]
+          - ["CAPZ", "Cluster API Provider برای Azure"]
+          - ["CAPG", "Cluster API Provider برای GCP"]
+          - ["CAPV", "Cluster API Provider برای vSphere"]
+          - ["CAPO", "Cluster API Provider برای OpenStack"]
+          - ["Remote/SSH", "Provider برای deploy روی bare metal یا هر ماشین Linux از طریق SSH"]
+
+      - type: multiple-choice
+        q: "k0rdent از کدام provider ها پشتیبانی می‌کند؟ (چند گزینه)"
+        options:
+          - text: "AWS"
+            correct: true
+          - text: "Azure"
+            correct: true
+          - text: "DigitalOcean به‌صورت native"
+          - text: "Remote/SSH"
+            correct: true
+          - text: "OpenStack"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-06-check.svg"
+    image_caption: "دانش مفاهیم و معماری k0rdent خود را آزمایش کنید"
+    explanation: "قبل از راه‌اندازی اولین cluster خود درک خود از k0rdent را آزمایش کنید!"
+    examples:
+      - q: "سه component اصلی k0rdent چیست؟"
+        type: input
+        a:
+          - "KCM, KSM, KOF"
+          - "KCM KSM KOF"
+          - "k0rdent Cluster Manager, State Manager, Observability"
+        labels: ["Quiz"]
+      - q: "k0rdent بهتر است به عنوان چه چیزی توصیف شود:"
+        type: select
+        options:
+          - text: "یک توزیع Kubernetes مثل k3s یا k0s"
+          - text: "یک super control plane برای مدیریت بسیاری از cluster های Kubernetes در مقیاس بزرگ"
+            correct: true
+          - text: "یک container runtime مثل Docker"
+          - text: "یک ابزار CI/CD pipeline"
+        labels: ["Quiz"]
+      - q: "کدام نقش‌های سازمانی k0rdent مطابقت دارند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "Platform Architect — template های قابل استفاده مجدد ایجاد می‌کند"
+            correct: true
+          - text: "Platform Lead — credential ها و دسترسی را مدیریت می‌کند"
+            correct: true
+          - text: "Platform Engineer — cluster ها را با template های مجاز deploy می‌کند"
+            correct: true
+          - text: "Cluster Root — ادمین کامل همه child cluster ها"
+        labels: ["Quiz"]

@@ -1,0 +1,236 @@
+version: 2
+number: 4
+title: "تأیید و کاوش نصب"
+description: "تأیید کنید که k0rdent با بررسی pod‌ها، template‌ها و Management object کاملاً عملیاتی است."
+image: "images/lesson-header.svg"
+image_caption: "kubectl get pods -n kcm-system که ~26 pod در حال اجرا نشان می‌دهد"
+sections:
+  - title: "بررسی Pod‌های KCM"
+    image: "images/section-01-kcm-pods.svg"
+    image_caption: "~26 pod در حال اجرا در namespace kcm-system شامل کنترلرهای CAPI و provider"
+    explanation: |
+      ۵-۱۰ دقیقه بعد از نصب صبر کنید، سپس تأیید کنید همه pod‌ها در namespace `kcm-system` در حال اجرا هستند:
+
+      ```bash
+      kubectl get pods -n kcm-system
+      ```
+
+      باید تقریباً **۲۶ pod** در حال اجرا ببینید، از جمله:
+
+      | Pod | هدف |
+      |-----|---------|
+      | `azureserviceoperator-*` | provider Azure |
+      | `capa-*` | provider AWS (CAPA) |
+      | `capi-*` | Cluster API اصلی |
+      | `capg-*` | provider GCP |
+      | `capo-*` | provider OpenStack |
+      | `capv-*` | provider vSphere |
+      | `capz-*` | provider Azure (CAPZ) |
+      | `helm-controller-*` | Helm controller از Flux |
+      | `kcm-cert-manager-*` | مدیریت گواهینامه |
+      | `kcm-controller-manager-*` | کنترلر اصلی KCM |
+      | `k0smotron-*` | Hosted control plane‌ها |
+      | `source-controller-*` | source controller از Flux |
+
+      **عیب‌یابی:** اگر pod‌ها restart یا `CrashLoopBackOff` نشان می‌دهند، از `kubectl describe pod <name> -n kcm-system` برای بررسی استفاده کنید.
+    examples:
+      - q: "چند pod باید در kcm-system در حال اجرا باشد؟"
+        a: "تقریباً ۲۶ pod، شامل کنترلرهای CAPI، کنترلرهای provider، کنترلرهای Flux و cert-manager."
+        labels: ["k0rdent", "Kubernetes"]
+        rel:
+          - ["kcm-system", "namespace‌ای که همه component‌های control plane k0rdent در آن اجرا می‌شوند"]
+          - ["CAPI controller", "کنترلر اصلی Cluster API برای lifecycle cluster"]
+          - ["Flux controllers", "کنترلرهای GitOps برای Helm و مدیریت source"]
+
+      - type: input
+        q: "چه دستوری همه pod‌های namespace kcm-system را فهرست می‌کند؟"
+        a:
+          - "kubectl get pods -n kcm-system"
+        labels: ["Quiz"]
+
+  - title: "بررسی Pod‌های KSM (ProjectSveltos)"
+    image: "images/section-02-ksm-pods.svg"
+    image_caption: "~10 pod در حال اجرا در namespace projectsveltos"
+    explanation: |
+      State Manager k0rdent از ProjectSveltos استفاده می‌کند. pod‌های آن را بررسی کنید:
+
+      ```bash
+      kubectl get pods -n projectsveltos
+      ```
+
+      باید تقریباً **۱۰ pod** در حال اجرا ببینید:
+
+      - `access-manager` — کنترل‌های دسترسی را مدیریت می‌کند
+      - `addon-controller` — سرویس‌ها را به child cluster‌ها deploy می‌کند
+      - `classifier-manager` — cluster‌ها را طبقه‌بندی می‌کند
+      - `event-manager` — رویدادها را مدیریت می‌کند
+      - `healthcheck-manager` — health را نظارت می‌کند
+      - `shard-controller` — sharding را مدیریت می‌کند
+      - `sc-manager` — مدیر کاتالوگ سرویس
+      - `conversion-webhook` — تبدیل‌های نسخه API
+      - `drift-detection-manager` — انحراف config را شناسایی می‌کند
+      - `sveltos-agent-manager` — مدیریت agent
+    examples:
+      - q: "ProjectSveltos در کدام namespace اجرا می‌شود؟"
+        a: "projectsveltos"
+        labels: ["k0rdent", "Services"]
+        rel:
+          - ["projectsveltos", "namespace برای pod‌های مدیریت سرویس KSM/Sveltos"]
+          - ["addon-controller", "component Sveltos که سرویس‌ها را به child cluster‌ها deploy می‌کند"]
+          - ["drift-detection-manager", "انحراف پیکربندی در cluster‌های مدیریت‌شده را شناسایی می‌کند"]
+
+      - type: select
+        q: "کدام component سرویس‌ها را به child cluster‌ها deploy می‌کند؟"
+        options:
+          - text: "classifier-manager"
+          - text: "addon-controller"
+            correct: true
+          - text: "shard-controller"
+          - text: "access-manager"
+        labels: ["Quiz"]
+
+  - title: "تأیید Provider Template‌ها"
+    image: "images/section-03-provider-templates.svg"
+    image_caption: "همه ProviderTemplate‌ها که VALID: true نشان می‌دهند"
+    explanation: |
+      ProviderTemplate‌ها تعریف می‌کنند کدام infrastructure provider‌ها در دسترس هستند. تأیید کنید همه معتبر هستند:
+
+      ```bash
+      kubectl get providertemplate -n kcm-system
+      ```
+
+      همه template‌ها باید `VALID: true` نشان دهند. Template‌هایی برای موارد زیر خواهید دید:
+      - `cluster-api` — CAPI اصلی
+      - `cluster-api-provider-aws` — AWS
+      - `cluster-api-provider-azure` — Azure
+      - `cluster-api-provider-gcp` — GCP
+      - `cluster-api-provider-openstack` — OpenStack
+      - `cluster-api-provider-vsphere` — vSphere
+      - `k0smotron` — hosted control plane‌ها
+      - `kcm` — خود k0rdent
+      - `projectsveltos` — مدیریت سرویس
+    examples:
+      - q: "VALID: true برای یک ProviderTemplate چه معنایی دارد؟"
+        a: "Template با موفقیت اعتبارسنجی شده — Helm chart آن در دسترس است، provider‌ها شناخته شده‌اند و آماده استفاده است."
+        labels: ["k0rdent", "Templates"]
+        rel:
+          - ["ProviderTemplate", "CRD که CAPI provider‌ها را برای عملیات infrastructure، bootstrap و control plane در معرض دید قرار می‌دهد"]
+
+      - type: input
+        q: "چه دستوری همه provider template‌ها را فهرست می‌کند؟"
+        a:
+          - "kubectl get providertemplate -n kcm-system"
+        labels: ["Quiz"]
+
+  - title: "تأیید Cluster Template‌ها"
+    image: "images/section-04-cluster-templates.svg"
+    image_caption: "ClusterTemplate‌ها برای همه provider‌ها که VALID: true نشان می‌دهند"
+    explanation: |
+      ClusterTemplate‌ها blueprintهایی برای ایجاد cluster هستند. موارد از پیش نصب‌شده را بررسی کنید:
+
+      ```bash
+      kubectl get clustertemplate -n kcm-system
+      ```
+
+      Template‌هایی برای provider‌ها و topology‌های مختلف خواهید دید:
+
+      | الگوی Template | توضیح |
+      |-----------------|-------------|
+      | `aws-standalone-cp-*` | cluster standalone AWS |
+      | `aws-eks-*` | cluster مدیریت‌شده AWS EKS |
+      | `aws-hosted-cp-*` | hosted control plane AWS |
+      | `azure-standalone-cp-*` | cluster standalone Azure |
+      | `azure-aks-*` | cluster مدیریت‌شده Azure AKS |
+      | `gcp-standalone-cp-*` | cluster standalone GCP |
+      | `remote-cluster-*` | cluster Remote/SSH |
+
+      همه باید `VALID: true` نشان دهند.
+    examples:
+      - q: "ClusterTemplate چیست؟"
+        a: "یک blueprint تغییرناپذیر و قابل استفاده مجدد که پیکربندی، component‌ها و ویژگی‌های یک cluster Kubernetes را تعریف می‌کند."
+        labels: ["k0rdent", "Templates"]
+        rel:
+          - ["ClusterTemplate", "blueprint تغییرناپذیر برای تعریف پیکربندی‌های cluster"]
+          - ["standalone", "topology cluster‌ای که control plane روی Node‌های اختصاصی اجرا می‌شود"]
+          - ["hosted", "topology cluster‌ای که control plane به‌صورت pod در management cluster اجرا می‌شود"]
+
+      - type: multiple-choice
+        q: "کدام‌یک از این‌ها نوع ClusterTemplate معتبر هستند؟ (چند گزینه)"
+        options:
+          - text: "aws-standalone-cp"
+            correct: true
+          - text: "azure-hosted-cp"
+            correct: true
+          - text: "remote-cluster"
+            correct: true
+          - text: "docker-local-cp"
+        labels: ["Quiz"]
+
+  - title: "تأیید Management Object"
+    image: "images/section-05-management.svg"
+    image_caption: "Management object که READY: True نشان می‌دهد — k0rdent کاملاً عملیاتی است"
+    explanation: |
+      آخرین بررسی — تأیید کنید Management object آماده است:
+
+      ```bash
+      kubectl get management -n kcm-system
+      ```
+
+      خروجی مورد انتظار:
+      ```
+      NAME   READY   RELEASE
+      kcm    True    kcm-1-8-0
+      ```
+
+      `READY: True` تأیید می‌کند k0rdent کاملاً عملیاتی است. اگر `False` نشان می‌دهد، چند دقیقه بیشتر صبر کنید و لاگ pod‌ها را برای خطا بررسی کنید.
+
+      برای جزئیات بیشتر:
+      ```bash
+      kubectl get management kcm -n kcm-system -o yaml
+      ```
+    examples:
+      - q: "Management object چه چیزی نشان می‌دهد؟"
+        a: "پیکربندی مدیریتی اصلی در k0rdent. READY: True تأیید می‌کند همه چیز عملیاتی است."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["Management", "CRD که پیکربندی و وضعیت کلی مدیریت k0rdent را نشان می‌دهد"]
+
+      - type: select
+        q: "Management object شما READY: False نشان می‌دهد. اول چه کاری باید بکنید؟"
+        options:
+          - text: "فوراً k0rdent را دوباره نصب کنید"
+          - text: "چند دقیقه بیشتر صبر کنید و لاگ pod‌ها را بررسی کنید"
+            correct: true
+          - text: "Management object را حذف کنید"
+          - text: "سرور را ریبوت کنید"
+        labels: ["Quiz"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-06-check.svg"
+    image_caption: "درک خود از بررسی‌های پس از نصب k0rdent را تأیید کنید"
+    explanation: "دانش خود از تأیید نصب k0rdent را آزمایش کنید!"
+    examples:
+      - q: "چه دستوری تأیید می‌کند همه component‌های k0rdent در حال اجرا هستند؟"
+        type: input
+        a:
+          - "kubectl get pods -n kcm-system"
+        labels: ["Quiz"]
+      - q: "VALID: true روی یک ClusterTemplate چه معنایی دارد؟"
+        type: select
+        options:
+          - text: "cluster با موفقیت deploy شده"
+          - text: "Helm chart template در دسترس است و provider‌ها شناخته شده‌اند — آماده استفاده است"
+            correct: true
+          - text: "template حداقل یک‌بار استفاده شده"
+          - text: "template برای deploy انتخاب شده"
+        labels: ["Quiz"]
+      - q: "کدام namespace‌ها component‌های control plane k0rdent را دارند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "kcm-system"
+            correct: true
+          - text: "projectsveltos"
+            correct: true
+          - text: "kube-system"
+          - text: "default"
+        labels: ["Quiz"]

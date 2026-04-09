@@ -1,0 +1,240 @@
+version: 2
+number: 6
+title: "مدیریت Credential و دسترسی"
+description: "بیاموزید k0rdent چگونه credential‌های provider را به‌صورت امن مدیریت می‌کند و دسترسی را از طریق RBAC کنترل می‌کند."
+image: "images/lesson-header.svg"
+image_caption: "مدل credential سه لایه‌ای: Secret → ClusterIdentity → Credential"
+sections:
+  - title: "مدل Credential"
+    image: "images/section-01-credential-model.svg"
+    image_caption: "Secret → ClusterIdentity → Credential: مهندسان هرگز credential‌های واقعی را نمی‌بینند"
+    explanation: |
+      k0rdent مدیریت credential را از طریق یک **مدل سه لایه** انتزاع می‌کند:
+
+      1. **Secret** — شامل credential‌های واقعی provider (access key، SSH key و غیره)
+      2. **ClusterIdentity** — یک object Kubernetes که به Secret ارجاع می‌دهد (خاص provider)
+      3. **Credential** — یک CRD k0rdent که به ClusterIdentity ارجاع می‌دهد و آن را برای مهندسان در دسترس می‌کند
+
+      این جداسازی تضمین می‌کند مهندسان پلتفرم می‌توانند با ارجاع به نام یک `Credential` cluster deploy کنند — **بدون اینکه credential‌های واقعی را ببینند**.
+    examples:
+      - q: "چرا k0rdent از مدل credential سه لایه استفاده می‌کند؟"
+        a: "برای جداسازی مدیریت credential از deploy cluster — مهندسان به نام‌های Credential ارجاع می‌دهند بدون دسترسی به secret‌های واقعی."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["Secret", "object Kubernetes شامل credential‌های واقعی provider"]
+          - ["ClusterIdentity", "object خاص provider که به یک Secret ارجاع می‌دهد"]
+          - ["Credential", "CRD k0rdent که credential‌ها را برای deploy cluster در دسترس می‌کند"]
+
+      - type: select
+        q: "چه کسی باید object‌های Secret و ClusterIdentity را بسازد؟"
+        options:
+          - text: "هر مهندس پلتفرم"
+          - text: "Platform lead با دسترسی به credential"
+            correct: true
+          - text: "k0rdent آنها را به‌صورت خودکار می‌سازد"
+          - text: "کاربران cluster"
+        labels: ["Quiz"]
+
+  - title: "فرآیند چهار مرحله‌ای Credential"
+    image: "images/section-02-four-step.svg"
+    image_caption: "چهار مرحله از ایجاد Secret تا ارجاع ClusterDeployment"
+    explanation: |
+      **مرحله ۱: ایجاد Secret + ClusterIdentity**
+      Platform lead Secret خاص provider را (شامل credential‌های واقعی) و یک ClusterIdentity که به آن ارجاع می‌دهد می‌سازد.
+
+      **مرحله ۲: ایجاد Credential Object**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: my-aws-cred
+        namespace: kcm-system
+      spec:
+        description: "AWS credentials for dev clusters"
+        identityRef:
+          apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+          kind: AWSClusterStaticIdentity
+          name: aws-cluster-identity
+      ```
+
+      **مرحله ۳: ارجاع در ClusterDeployment**
+      مهندسان فقط نام Credential را ارجاع می‌دهند:
+      ```yaml
+      spec:
+        credential: my-aws-cred
+      ```
+
+      **مرحله ۴: انتشار اختیاری Credential**
+      Credential‌ها می‌توانند در صورت نیاز به Node‌های child cluster منتشر شوند.
+    examples:
+      - q: "یک Credential object چه چیزی دارد؟"
+        a: "یک ارجاع (identityRef) به یک ClusterIdentity object، به علاوه یک توضیح اختیاری. credential‌های واقعی ندارد."
+        labels: ["Security", "k0rdent"]
+
+      - type: input
+        q: "در یک ClusterDeployment، چگونه مشخص می‌کنید از کدام credential استفاده کنید؟"
+        a:
+          - "spec.credential"
+          - "credential"
+        labels: ["Quiz"]
+
+  - title: "Credential‌های SSH برای Hetzner (Remote Provider)"
+    image: "images/section-03-ssh.svg"
+    image_caption: "ایجاد SSH key Secret و Credential برای remote provider Hetzner"
+    explanation: |
+      برای کارگاه Hetzner از credential‌های SSH key استفاده می‌کنیم. راه‌اندازی:
+
+      **ایجاد SSH key Secret:**
+      ```bash
+      KEY_PATH=~/.ssh/id_ed25519
+      PRIVATE_SSH_KEY_B64=$(cat $KEY_PATH | base64 -w 0)
+      ```
+
+      ```yaml
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: remote-ssh-key
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+      type: Opaque
+      data:
+        value: <private-key-base64-encoded>
+      ```
+
+      **ایجاد Credential:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: remote-cred
+        namespace: kcm-system
+      spec:
+        identityRef:
+          apiVersion: v1
+          kind: Secret
+          name: remote-ssh-key
+          namespace: kcm-system
+      ```
+
+      برای remote/SSH provider، Credential مستقیماً به Secret ارجاع می‌دهد (بدون ClusterIdentity واسط).
+    examples:
+      - q: "SSH private key چطور در Secret ذخیره می‌شود؟"
+        a: "Base64-encoded در فیلد 'value' یک Secret از نوع Opaque."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["remote-ssh-key", "Secret شامل SSH private key با encoding base64"]
+          - ["remote-cred", "Credential object برای deploy‌های remote مبتنی بر SSH"]
+
+      - type: select
+        q: "برای remote/SSH provider، آیا Credential به ClusterIdentity نیاز دارد؟"
+        options:
+          - text: "بله، همیشه"
+          - text: "خیر — مستقیماً به SSH key Secret ارجاع می‌دهد"
+            correct: true
+          - text: "فقط برای cluster‌های production"
+        labels: ["Quiz"]
+
+  - title: "بررسی Credential‌های موجود"
+    image: "images/section-04-check.svg"
+    image_caption: "kubectl get credentials که همه namespace‌ها را فهرست می‌کند"
+    explanation: |
+      قبل از ایجاد credential‌های جدید، بررسی کنید چه چیزی از قبل در دسترس است:
+
+      ```bash
+      # فهرست همه credential‌ها در همه namespace‌ها
+      kubectl get credentials --all-namespaces
+
+      # توصیف یک credential خاص
+      kubectl describe credential remote-cred -n kcm-system
+      ```
+
+      Credential‌ها namespace-scoped هستند. namespace `kcm-system` جایی است که credential‌های سیستم‌گستر معمولاً در آن زندگی می‌کنند.
+    examples:
+      - q: "چطور همه credential‌ها در cluster را فهرست می‌کنید؟"
+        a: "kubectl get credentials --all-namespaces"
+        labels: ["Security", "CLI"]
+
+  - title: "RBAC در k0rdent"
+    image: "images/section-05-rbac.svg"
+    image_caption: "AccessManagement CRD که دسترسی template را برای هر namespace کنترل می‌کند"
+    explanation: |
+      k0rdent **کنترل دسترسی مبتنی بر نقش** را با اصل کمترین امتیاز ارائه می‌دهد:
+
+      | مفهوم | هدف |
+      |---------|---------|
+      | **Roles** | تعریف می‌کنند چه عملیاتی روی کدام resource‌ها انجام می‌شود |
+      | **AccessManagement** | CRD که قوانین دسترسی و namespace‌های هدف را تعریف می‌کند |
+      | **AccessRules** | مشخص می‌کنند کدام template‌ها و resource‌ها در کدام namespace‌ها در دسترس هستند |
+      | **TargetNamespaces** | تعریف می‌کنند resource‌ها کجا توزیع می‌شوند |
+
+      Object `AccessManagement` کنترل می‌کند کدام `ClusterTemplateChain` و `ServiceTemplateChain` object‌ها در هر namespace در دسترس هستند.
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: AccessManagement
+      metadata:
+        name: access-config
+      spec:
+        accessRules:
+          - clusterTemplateChains:
+              - name: aws-standalone-cp
+            serviceTemplateChains:
+              - name: ingress-nginx
+            targetNamespaces:
+              selector:
+                matchLabels:
+                  team: dev
+      ```
+    examples:
+      - q: "AccessManagement در k0rdent چه چیزی را کنترل می‌کند؟"
+        a: "تعریف می‌کند کدام template‌ها (از طریق TemplateChain‌ها) در کدام namespace‌ها در دسترس هستند و کنترل می‌کند هر تیم چه چیزی می‌تواند deploy کند."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["AccessManagement", "CRD برای تعریف قوانین دسترسی و توزیع resource"]
+          - ["AccessRules", "مشخص می‌کند کدام template‌ها در کدام namespace‌ها در دسترس هستند"]
+          - ["TargetNamespaces", "namespace‌هایی را که resource‌ها در آنها توزیع می‌شوند تعریف می‌کند"]
+
+      - type: select
+        q: "چطور یک تیم را محدود می‌کنید تا فقط از ClusterTemplate‌های خاص استفاده کند؟"
+        options:
+          - text: "template‌هایی که نباید استفاده کنند را حذف کنید"
+          - text: "از AccessManagement با AccessRule‌هایی که namespace آنها را هدف قرار می‌دهند استفاده کنید"
+            correct: true
+          - text: "مجوزهای filesystem روی فایل‌های template تنظیم کنید"
+          - text: "از NetworkPolicy‌های Kubernetes استفاده کنید"
+        labels: ["Quiz"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-06-check.svg"
+    image_caption: "دانش خود را از credential‌ها و مدیریت دسترسی k0rdent آزمایش کنید"
+    explanation: "درک خود از نحوه کار credential‌ها و دسترسی در k0rdent را آزمایش کنید!"
+    examples:
+      - q: "هنگام ایجاد credential برای k0rdent، SSH private key کجا ذخیره می‌شود؟"
+        type: input
+        a:
+          - "در یک Kubernetes Secret"
+          - "یک Kubernetes Secret"
+          - "در یک Secret"
+        labels: ["Quiz"]
+      - q: "چه کسی باید دسترسی مستقیم به credential‌های cloud provider داشته باشد؟"
+        type: select
+        options:
+          - text: "همه مهندسان پلتفرم که cluster deploy می‌کنند"
+          - text: "فقط platform lead که credential‌ها را می‌سازد و مدیریت می‌کند"
+            correct: true
+          - text: "همه کاربران management cluster"
+          - text: "هیچ‌کس — credential‌ها به‌صورت خودکار تولید می‌شوند"
+        labels: ["Quiz"]
+      - q: "AccessManagement چه چیزی را کنترل می‌کند؟ (همه موارد صحیح را انتخاب کنید)"
+        type: multiple-choice
+        options:
+          - text: "کدام ClusterTemplateChain‌ها برای هر namespace در دسترس هستند"
+            correct: true
+          - text: "کدام ServiceTemplateChain‌ها برای هر namespace در دسترس هستند"
+            correct: true
+          - text: "کدام کاربران می‌توانند SSH به worker node‌ها بزنند"
+          - text: "کدام namespace‌ها دسترسی template دریافت می‌کنند"
+            correct: true
+        labels: ["Quiz"]

@@ -1,0 +1,9 @@
+workshops:
+  - folder: k0rdent-workshop
+    code: fa-IR
+    title: "کارگاه k0rdent"
+    description: "کارگاه عملی برای مهندسان پلتفرم. از اصول اولیه کانتینرها تا مدیریت چند خوشه با k0rdent روی Hetzner."
+    color: "220 45% 92%"
+    primaryColor: "220 75% 45%"
+    image: "k0rdent-workshop/thumbnail.svg"
+    labels: ["IT", "Kubernetes", "Platform Engineering", "پیشرفته"]

@@ -1,0 +1,327 @@
+version: 2
+number: 12
+title: "پشتیبان‌گیری، بازیابی و Observability"
+description: "از management cluster خود با پشتیبان‌گیری Velero محافظت کنید و cluster‌ها را با KOF نظارت کنید."
+image: "images/lesson-header.svg"
+image_caption: "سپر پشتیبان‌گیری Velero + observability KOF — حفاظت از زیرساخت k0rdent شما"
+
+sections:
+  - title: "چرا پشتیبان‌گیری اهمیت دارد"
+    image: "images/section-01-why-backup.svg"
+    image_caption: "Management cluster در مرکز — اگر خراب شود، مدیریت همه child cluster‌ها از دست می‌رود"
+    explanation: |
+      management cluster **قلب زیرساخت شما** است. اگر خراب شود، توانایی مدیریت همه child cluster‌ها را از دست می‌دهید. قابلیت‌های پشتیبان‌گیری و بازیابی برای موارد زیر ضروری هستند:
+
+      - **بازیابی از فاجعه** — بازیابی روی یک management cluster جدید
+      - **Rollback** — بازیابی از ارتقاءهای ناموفق
+      - **Migration** — انتقال مدیریت به infrastructure متفاوت
+
+      k0rdent **Velero** را مستقیماً در Helm chart خود برای عملیات پشتیبان‌گیری ادغام می‌کند.
+    examples:
+      - q: "چرا پشتیبان‌گیری از management cluster حیاتی است؟"
+        a: "management cluster همه child cluster‌ها را کنترل می‌کند. از دست دادن آن یعنی از دست دادن توانایی مدیریت کل زیرساخت."
+        labels: ["Backup", "k0rdent"]
+        rel:
+          - ["Velero", "ابزار open-source برای پشتیبان‌گیری و بازیابی cluster‌های Kubernetes"]
+          - ["Disaster Recovery", "بازیابی مدیریت روی یک cluster جدید بعد از شکست"]
+
+      - type: select
+        q: "k0rdent از چه ابزاری برای پشتیبان‌گیری و بازیابی استفاده می‌کند؟"
+        options:
+          - text: "etcdctl"
+          - text: "Velero"
+            correct: true
+          - text: "Kasten K10"
+          - text: "Restic standalone"
+        labels: ["Quiz"]
+
+  - title: "معماری پشتیبان‌گیری"
+    image: "images/section-02-architecture.svg"
+    image_caption: "k0rdent زمان‌بندی می‌کند، Velero اجرا می‌کند — چه چیزی پشتیبان گرفته می‌شود و چه چیزی نه"
+    explanation: |
+      سیستم پشتیبان‌گیری k0rdent تقسیم مسئولیت واضحی دارد:
+
+      | Component | مسئولیت |
+      |-----------|---------------|
+      | **k0rdent** | زمان‌بندی، تعیین چه چیزی پشتیبان گرفته شود |
+      | **Velero** | اجرای پشتیبان‌گیری، مدیریت ذخیره‌سازی |
+
+      **چه چیزی پشتیبان گرفته می‌شود:**
+      - همه object‌های پیکربندی k0rdent (CRD‌ها، template‌ها، credential‌ها)
+      - تعریف ClusterDeployment
+      - پیکربندی سرویس
+      - قوانین RBAC و مدیریت دسترسی
+
+      **چه چیزی پشتیبان گرفته نمی‌شود:**
+      - workload‌های child cluster (اینها مستقل هستند)
+      - resource‌های cloud provider خودشان
+    examples:
+      - q: "در یک پشتیبان‌گیری management k0rdent چه چیزی پشتیبان گرفته می‌شود؟"
+        a: "همه object‌های پیکربندی k0rdent: CRD‌ها، template‌ها، credential‌ها، ClusterDeployment‌ها، پیکربندی سرویس و قوانین RBAC."
+        labels: ["Backup", "k0rdent"]
+
+      - type: select
+        q: "آیا workload‌های child cluster در پشتیبان‌گیری management گنجانده می‌شوند؟"
+        options:
+          - text: "بله — همه چیز پشتیبان گرفته می‌شود"
+          - text: "خیر — فقط پیکربندی management cluster پشتیبان گرفته می‌شود"
+            correct: true
+          - text: "فقط اگر صریحاً پیکربندی شده باشد"
+        labels: ["Quiz"]
+
+  - title: "آماده‌سازی برای پشتیبان‌گیری"
+    image: "images/section-03-prepare.svg"
+    image_caption: "Secret credential Velero + پیکربندی ذخیره‌سازی سازگار با S3"
+    explanation: |
+      قبل از فعال‌سازی پشتیبان‌گیری، یک مقصد ذخیره‌سازی برای Velero پیکربندی کنید:
+
+      1. **انتخاب ارائه‌دهنده ذخیره‌سازی** — ذخیره‌سازی سازگار با S3 (AWS S3، MinIO، Hetzner Object Storage و غیره)
+      2. **ایجاد credential ذخیره‌سازی** — access key و secret برای ذخیره‌سازی
+      3. **پیکربندی Velero** — از طریق مقادیر Helm k0rdent
+
+      برای Hetzner می‌توانید از **Hetzner Object Storage** (سازگار با S3) استفاده کنید:
+      ```bash
+      kubectl create secret generic velero-credentials \
+        -n kcm-system \
+        --from-literal=aws='[default]
+      aws_access_key_id=YOUR_ACCESS_KEY
+      aws_secret_access_key=YOUR_SECRET_KEY'
+      ```
+    examples:
+      - q: "چه گزینه‌های ذخیره‌سازی با سیستم پشتیبان‌گیری k0rdent کار می‌کنند؟"
+        a: "هر ذخیره‌سازی سازگار با S3: AWS S3، MinIO، Hetzner Object Storage و غیره."
+        labels: ["Backup", "k0rdent"]
+        rel:
+          - ["S3-compatible storage", "ذخیره‌سازی object با سازگاری AWS S3 API"]
+          - ["Hetzner Object Storage", "ذخیره‌سازی object سازگار با S3 از Hetzner"]
+
+  - title: "پشتیبان‌گیری زمان‌بندی‌شده و درخواستی"
+    image: "images/section-04-schedule.svg"
+    image_caption: "ManagementBackup CRD: زمان‌بندی‌شده (cron) در مقابل درخواستی (spec خالی)"
+    explanation: |
+      k0rdent از دو حالت پشتیبان‌گیری از طریق `ManagementBackup` CRD پشتیبانی می‌کند:
+
+      **پشتیبان‌گیری زمان‌بندی‌شده:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ManagementBackup
+      metadata:
+        name: daily-backup
+        namespace: kcm-system
+      spec:
+        schedule: "0 2 * * *"  # روزانه ساعت 2 صبح
+      ```
+
+      **پشتیبان‌گیری درخواستی:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ManagementBackup
+      metadata:
+        name: pre-upgrade-backup
+        namespace: kcm-system
+      spec: {}
+      ```
+
+      با `kubectl apply -f backup.yaml` اعمال کنید.
+
+      **بهترین روش:** همیشه قبل از ارتقاء k0rdent یا ایجاد تغییرات اصلی یک پشتیبان بگیرید.
+    examples:
+      - q: "چطور یک پشتیبان روزانه ساعت 2 صبح ایجاد می‌کنید؟"
+        a: 'spec.schedule را روی یک عبارت cron تنظیم کنید: "0 2 * * *" در یک ManagementBackup object.'
+        labels: ["Backup", "k0rdent"]
+        rel:
+          - ["ManagementBackup", "CRD برای پیکربندی عملیات پشتیبان‌گیری"]
+
+      - type: input
+        q: "از کدام CRD برای پشتیبان‌گیری k0rdent استفاده می‌شود؟"
+        a:
+          - "ManagementBackup"
+        labels: ["Quiz"]
+
+  - title: "بازیابی از پشتیبان"
+    image: "images/section-05-restore.svg"
+    image_caption: "velero backup get → velero restore create — اتصال مجدد به child cluster‌های موجود"
+    explanation: |
+      بازیابی object‌های پیکربندی k0rdent را از یک پشتیبان **بدون reprovisioning** resource‌های cloud دوباره می‌سازد:
+
+      **مراحل:**
+      1. یک management cluster تازه با k0rdent نصب کنید
+      2. Velero را با دسترسی به ذخیره‌سازی پشتیبان پیکربندی کنید
+      3. پشتیبان‌های موجود را فهرست کنید:
+         ```bash
+         velero backup get
+         ```
+      4. از یک پشتیبان خاص بازیابی کنید:
+         ```bash
+         velero restore create --from-backup <backup-name>
+         ```
+
+      **مهم:** بازیابی k0rdent را به child cluster‌های موجود متصل می‌کند. از آنجایی که resource‌های cloud هنوز وجود دارند، k0rdent reconcile کرده و مدیریت را از سر می‌گیرد.
+    examples:
+      - q: "آیا بازیابی از پشتیبان child cluster‌ها را دوباره تأمین می‌کند؟"
+        a: "خیر — بازیابی object‌های پیکربندی را دوباره می‌سازد. k0rdent بدون reprovisioning به cluster‌های موجود متصل می‌شود."
+        labels: ["Backup", "k0rdent"]
+
+      - type: select
+        q: "بعد از بازیابی k0rdent روی یک management cluster جدید، چه اتفاقی برای child cluster‌های موجود می‌افتد؟"
+        options:
+          - text: "حذف و دوباره ایجاد می‌شوند"
+          - text: "k0rdent اتصال مجدد برقرار کرده و مدیریت را از سر می‌گیرد"
+            correct: true
+          - text: "به‌طور دائمی unmanaged می‌شوند"
+          - text: "باید به‌صورت دستی دوباره پذیرش داده شوند"
+        labels: ["Quiz"]
+
+  - title: "KOF — Observability و FinOps"
+    image: "images/section-06-kof.svg"
+    image_caption: "KOF: collector OpenTelemetry → dashboard‌های Grafana + alerting + مدیریت هزینه"
+    explanation: |
+      **KOF (k0rdent Observability & FinOps)** monitoring در سطح enterprise ارائه می‌دهد:
+
+      **معماری:**
+      - بر اساس **OpenTelemetry** برای metric‌ها، لاگ‌ها و trace‌های یکپارچه
+      - جمع‌آوری داده متمرکز از همه cluster‌های مدیریت‌شده
+      - dashboard‌های **Grafana** برای visualization
+      - مدیریت alert با قوانین قابل پیکربندی
+
+      **ویژگی‌های کلیدی:**
+      - نظارت بر سلامت cluster
+      - ردیابی استفاده از resource
+      - مدیریت هزینه و FinOps
+      - جمع‌آوری لاگ
+      - distributed tracing
+      - پشتیبانی از multi-tenancy
+
+      **نصب:**
+      KOF جداگانه از KCM نصب می‌شود و Helm chart خود را دارد.
+    examples:
+      - q: "KOF چیست؟"
+        a: "k0rdent Observability & FinOps — monitoring enterprise بر اساس OpenTelemetry با dashboard‌های Grafana، alerting و مدیریت هزینه."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["KOF", "k0rdent Observability & FinOps برای monitoring و مدیریت هزینه"]
+          - ["OpenTelemetry", "چارچوب observability یکپارچه برای metric‌ها، لاگ‌ها و trace‌ها"]
+          - ["Grafana", "پلتفرم visualization و dashboard open-source"]
+
+      - type: multiple-choice
+        q: "KOF چه چیزی ارائه می‌دهد؟ (چند گزینه)"
+        options:
+          - text: "جمع‌آوری metric متمرکز"
+            correct: true
+          - text: "تأمین cluster"
+          - text: "dashboard‌های Grafana"
+            correct: true
+          - text: "مدیریت alert"
+            correct: true
+          - text: "مدیریت هزینه / FinOps"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "حذف k0rdent"
+    image: "images/section-07-uninstall.svg"
+    image_caption: "ترتیب حذف: حذف ClusterDeployment‌ها → Management → helm uninstall → حذف namespace"
+    explanation: |
+      اگر نیاز به پاک‌سازی دارید، این ترتیب دقیق را دنبال کنید:
+
+      ```bash
+      # ۱. اول همه ClusterDeployment‌ها را حذف کنید
+      kubectl delete clusterdeployments --all -n kcm-system
+
+      # ۲. منتظر بمانید child cluster‌ها کاملاً deprovisioning شوند
+      kubectl get clusters.cluster.x-k8s.io -n kcm-system --watch
+
+      # ۳. Management object را حذف کنید
+      kubectl delete management.k0rdent kcm
+
+      # ۴. Helm release را حذف کنید
+      helm uninstall kcm -n kcm-system
+
+      # ۵. namespace را حذف کنید
+      kubectl delete ns kcm-system
+      ```
+
+      **مهم:** این ترتیب را دنبال کنید! حذف Helm release قبل از حذف ClusterDeployment‌ها می‌تواند resource‌های cloud orphaned باقی بگذارد.
+    examples:
+      - q: "چرا باید ClusterDeployment‌ها را قبل از حذف Helm chart حذف کنید؟"
+        a: "حذف Helm chart ابتدا کنترلرهایی را که resource‌های cloud را پاک می‌کنند حذف می‌کند و VM‌ها و infrastructure orphaned باقی می‌ماند."
+        labels: ["k0rdent", "CLI"]
+
+      - type: select
+        q: "ترتیب صحیح حذف چیست؟"
+        options:
+          - text: "helm uninstall → حذف namespace → حذف ClusterDeployment‌ها"
+          - text: "حذف ClusterDeployment‌ها → حذف Management → helm uninstall → حذف namespace"
+            correct: true
+          - text: "حذف namespace → همه چیز پاک می‌شود"
+          - text: "kubectl delete all --all → helm uninstall"
+        labels: ["Quiz"]
+
+  - title: "خلاصه کارگاه"
+    image: "images/section-08-summary.svg"
+    image_caption: "۱۲ درس کامل — از کانتینرها تا مدیریت چند-cluster با k0rdent"
+    explanation: |
+      تبریک! کارگاه k0rdent را تکمیل کردید. اینجا چیزی است که یاد گرفتید:
+
+      | درس | موضوع |
+      |--------|-------|
+      | ۱ | مفاهیم و معماری k0rdent |
+      | ۲ | راه‌اندازی management cluster روی Hetzner |
+      | ۳ | تأیید نصب |
+      | ۴ | سیستم template (Cluster/Service/Provider template‌ها) |
+      | ۵ | Credential‌ها و مدیریت دسترسی |
+      | ۶ | Deploy cluster از طریق SSH/Remote |
+      | ۷ | مدیریت چرخه حیات cluster |
+      | ۸ | کار با سرویس‌ها (KSM) |
+      | ۹ | سرویس‌های چند-cluster و hosted control plane‌ها |
+      | ۱۰ | ایجاد template‌های سفارشی |
+      | ۱۱ | پشتیبان‌گیری، بازیابی و observability |
+
+      **گام‌های بعدی:**
+      - [مستندات k0rdent](https://docs.k0rdent.io/v1.8.0/) را برای بررسی عمیق کاوش کنید
+      - Deploy به provider‌های دیگر (AWS، Azure، GCP) را امتحان کنید
+      - KOF را برای observability کامل راه‌اندازی کنید
+      - template‌های سفارشی برای سازمان خود بسازید
+    examples:
+      - q: "مستندات کامل k0rdent کجاست؟"
+        a: "https://docs.k0rdent.io/v1.8.0/"
+        labels: ["k0rdent", "Basics"]
+
+      - type: select
+        q: "برای استفاده production، کدام component k0rdent را بعد بررسی می‌کنید؟"
+        options:
+          - text: "KOF برای monitoring و observability"
+            correct: true
+          - text: "هیچ‌چیز — این کارگاه همه چیز را پوشش می‌دهد"
+          - text: "k0rdent را با ابزار دیگری جایگزین کنید"
+        labels: ["Quiz"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-09-check.svg"
+    image_caption: "آزمون دانش نهایی — پشتیبان‌گیری، observability و جمع‌بندی کارگاه"
+    explanation: "دانش خود از پشتیبان‌گیری، بازیابی و observability در k0rdent را آزمایش کنید!"
+    examples:
+      - q: "از کدام CRD برای زمان‌بندی پشتیبان‌گیری خودکار در k0rdent استفاده می‌کنید؟"
+        type: input
+        a:
+          - "ManagementBackup"
+        labels: ["Quiz"]
+      - q: "بعد از بازیابی k0rdent روی یک management cluster جدید، با child cluster‌های موجود چه اتفاقی می‌افتد؟"
+        type: select
+        options:
+          - text: "حذف شده و باید دوباره deploy شوند"
+          - text: "k0rdent اتصال مجدد برقرار کرده و مدیریت آنها را از سر می‌گیرد"
+            correct: true
+          - text: "به‌طور دائمی unmanaged می‌شوند"
+          - text: "باید به‌صورت دستی با kubectl دوباره پذیرش داده شوند"
+        labels: ["Quiz"]
+      - q: "کدام‌یک در پشتیبان‌گیری management k0rdent گنجانده می‌شوند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "تعریف ClusterDeployment"
+            correct: true
+          - text: "template‌ها و credential‌های k0rdent"
+            correct: true
+          - text: "workload‌های اپلیکیشن child cluster"
+          - text: "قوانین RBAC و مدیریت دسترسی"
+            correct: true
+        labels: ["Quiz"]

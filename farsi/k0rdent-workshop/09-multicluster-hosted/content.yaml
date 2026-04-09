@@ -1,0 +1,249 @@
+version: 2
+number: 10
+title: "سرویس‌های چند-Cluster و Hosted Control Plane‌ها"
+description: "Deploy سرویس‌ها به‌صورت همزمان روی چندین cluster و درک معماری hosted control plane."
+image: "images/lesson-header.svg"
+image_caption: "MultiClusterService در حال deploy به همه cluster‌های مطابق، hosted control plane‌ها به‌عنوان pod"
+sections:
+  - title: "مفهوم MultiClusterService"
+    image: "images/section-01-multicluster.svg"
+    image_caption: "MultiClusterService که همه cluster‌ها با label environment: dev را هدف قرار می‌دهد"
+    explanation: |
+      یک `MultiClusterService` سرویس‌ها را به‌صورت همزمان روی **چندین cluster مطابق** با استفاده از label selector deploy می‌کند:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: MultiClusterService
+      metadata:
+        name: shared-ingress
+      spec:
+        clusterSelector:
+          matchLabels:
+            environment: dev
+        serviceSpec:
+          services:
+          - template: ingress-nginx-4.11.3
+            name: ingress-nginx
+            namespace: ingress-nginx
+          priority: 100
+      ```
+
+      این ingress-nginx را به **هر ClusterDeployment** با label `environment: dev` deploy می‌کند. وقتی cluster‌های جدید آن label را دریافت کنند، به‌صورت خودکار سرویس را دریافت می‌کنند.
+    examples:
+      - q: "MultiClusterService چه کاری انجام می‌دهد؟"
+        a: "سرویس‌ها را به‌صورت همزمان روی چندین cluster با استفاده از label selector برای تطبیق ClusterDeployment‌های هدف deploy می‌کند."
+        labels: ["Services", "Cluster"]
+        rel:
+          - ["MultiClusterService", "CRD برای deploy سرویس‌ها روی چندین cluster مطابق"]
+          - ["clusterSelector", "label matcher که تعیین می‌کند کدام cluster‌ها سرویس را دریافت کنند"]
+
+      - type: select
+        q: "یک cluster جدید label 'environment: dev' دریافت می‌کند. چه اتفاقی برای MultiClusterService‌های مطابق می‌افتد؟"
+        options:
+          - text: "هیچ‌چیز — MultiClusterService‌های موجود روی cluster‌های جدید تأثیر نمی‌گذارند"
+          - text: "سرویس‌ها به‌صورت خودکار به cluster جدید deploy می‌شوند"
+            correct: true
+          - text: "یک ادمین باید deploy را دستی trigger کند"
+          - text: "cluster باید ریستارت شود"
+        labels: ["Quiz"]
+
+  - title: "تنظیم Label‌های Cluster"
+    image: "images/section-02-labels.svg"
+    image_caption: "spec.config.clusterLabels در ClusterDeployment برای تطبیق MultiClusterService"
+    explanation: |
+      برای کارکرد MultiClusterService، ClusterDeployment‌های شما به label نیاز دارند:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterDeployment
+      metadata:
+        name: my-hetzner-cluster
+        namespace: kcm-system
+      spec:
+        template: remote-cluster-1-0-19
+        credential: remote-cred
+        config:
+          clusterLabels:
+            environment: dev
+            tier: backend
+            region: eu
+      ```
+
+      یا label‌ها را به cluster موجود اضافه کنید:
+      ```bash
+      kubectl patch clusterdeployment my-hetzner-cluster \
+        -n kcm-system --type='merge' \
+        -p '{"spec":{"config":{"clusterLabels":{"environment":"dev"}}}}'
+      ```
+    examples:
+      - q: "label‌های cluster برای تطبیق MultiClusterService کجا تنظیم می‌شوند؟"
+        a: "در spec.config.clusterLabels از ClusterDeployment."
+        labels: ["Services", "Cluster"]
+
+  - title: "Priority و حل تعارض"
+    image: "images/section-03-priority.svg"
+    image_caption: "مقادیر Priority: اعداد بالاتر برنده می‌شوند وقتی چندین سرویس یک cluster را هدف قرار می‌دهند"
+    explanation: |
+      وقتی چندین source سعی می‌کنند نسخه‌های مختلف یک سرویس را deploy کنند، **priority** تعارض را حل می‌کند:
+
+      ```yaml
+      spec:
+        serviceSpec:
+          priority: 100  # عدد بالاتر = priority بالاتر
+      ```
+
+      قوانین:
+      - **اعداد بالاتر بر پایین‌تر ارجحیت دارند** — priority 200 بر 100 برنده می‌شود
+      - **priority‌های مساوی** — اول آمده اول سرویس می‌شود
+      - priority به ازای هر سرویس اعمال می‌شود، نه به‌صورت کلی
+
+      این اجازه می‌دهد یک MultiClusterService پیش‌فرض با `priority: 100` داشته باشید و cluster‌های خاص را با `priority: 200` در ClusterDeployment آنها override کنید.
+    examples:
+      - q: "k0rdent چطور deploy‌های سرویس متعارض را حل می‌کند؟"
+        a: "با استفاده از مقادیر priority عددی — اعداد بالاتر بر پایین‌تر ارجحیت دارند. priority‌های مساوی به‌صورت اول آمده اول سرویس شده حل می‌شوند."
+        labels: ["Services", "k0rdent"]
+
+      - type: input
+        q: "کدام برنده است: سرویس با priority 100 یا priority 200؟"
+        a:
+          - "200"
+          - "priority 200"
+        labels: ["Quiz"]
+
+  - title: "وابستگی‌های MultiClusterService"
+    image: "images/section-04-dependencies.svg"
+    image_caption: "spec.dependsOn تضمین می‌کند cert-manager قبل از سرویس‌های وابسته deploy می‌شود"
+    explanation: |
+      سرویس‌ها می‌توانند به سرویس‌های دیگر وابسته باشند:
+
+      **بین MultiClusterService‌ها** — از `spec.dependsOn` استفاده کنید:
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: MultiClusterService
+      metadata:
+        name: my-app
+      spec:
+        dependsOn:
+          - name: cert-manager-mcs
+          - name: shared-ingress
+        clusterSelector:
+          matchLabels:
+            environment: dev
+        serviceSpec:
+          services:
+          - template: my-app-template
+            name: my-app
+            namespace: default
+      ```
+
+      این تضمین می‌کند cert-manager و ingress **قبل از** my-app روی همه cluster‌های مطابق deploy شوند.
+    examples:
+      - q: "چطور مطمئن می‌شوید cert-manager قبل از اپلیکیشن شما روی cluster‌ها deploy می‌شود؟"
+        a: "از spec.dependsOn در MultiClusterService خود برای ارجاع به MultiClusterService cert-manager استفاده کنید."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["dependsOn", "فیلدی که تضمین می‌کند سرویس‌های پیش‌نیاز قبل از سرویس‌های وابسته deploy می‌شوند"]
+
+  - title: "Hosted Control Plane‌ها"
+    image: "images/section-05-hosted.svg"
+    image_caption: "Hosted control plane: control plane child cluster به‌عنوان pod در management cluster اجرا می‌شود"
+    explanation: |
+      یک **hosted control plane** control plane Kubernetes (API server، etcd، کنترلرها) را به‌عنوان pod **داخل management cluster** اجرا می‌کند نه روی Node‌های controller اختصاصی:
+
+      **مزایا:**
+      - **بهینه‌سازی resource** — نیاز به Node‌های control plane اختصاصی نیست
+      - **مدیریت متمرکز** — control plane‌ها فقط pod هستند
+      - **مقیاس‌بندی پویا** — با تنظیم resource‌های pod مقیاس می‌شوند
+      - **صرفه‌جویی در هزینه** — سرورهای کمتری نیاز است
+
+      **trade-off:**
+      اگر management cluster از کار بیفتد، نمی‌توانید child cluster‌ها را مدیریت کنید (اگرچه workload‌ها به کار ادامه می‌دهند).
+
+      k0rdent از **k0smotron** برای فعال‌سازی hosted control plane‌ها در همه provider‌های پشتیبانی‌شده استفاده می‌کند.
+    examples:
+      - q: "hosted control plane چیست؟"
+        a: "یک deploy که در آن control plane child cluster به‌عنوان pod در management cluster اجرا می‌شود نه روی Node‌های اختصاصی."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["Hosted control plane", "control plane که به‌عنوان pod در management cluster اجرا می‌شود"]
+          - ["Standalone", "deploy سنتی که در آن control plane روی Node‌های اختصاصی اجرا می‌شود"]
+          - ["k0smotron", "ابزاری که hosted control plane‌ها را در k0rdent فعال می‌کند"]
+
+      - type: select
+        q: "اگر management cluster از کار بیفتد چه اتفاقی برای workload‌های child cluster می‌افتد؟"
+        options:
+          - text: "workload‌ها بلافاصله متوقف می‌شوند"
+          - text: "workload‌ها به کار ادامه می‌دهند اما نمی‌توانند مدیریت شوند"
+            correct: true
+          - text: "workload‌ها به‌صورت خودکار به cluster دیگری منتقل می‌شوند"
+          - text: "هیچ‌چیز — child cluster‌ها کاملاً مستقل هستند"
+        labels: ["Quiz"]
+
+  - title: "Hosted در مقابل Standalone"
+    image: "images/section-06-hosted-vs-standalone.svg"
+    image_caption: "مقایسه: topology standalone در مقابل hosted control plane"
+    explanation: |
+      انتخاب بین hosted و standalone به نیازهای شما بستگی دارد:
+
+      | جنبه | Standalone | Hosted |
+      |--------|-----------|--------|
+      | **Control plane** | Node‌های اختصاصی | Pod در management cluster |
+      | **استقلال** | کاملاً مستقل | به management cluster بستگی دارد |
+      | **هزینه** | بالاتر (Node‌های اضافی) | پایین‌تر (resource‌های مشترک) |
+      | **مقیاس‌بندی** | مقیاس Node‌ها | مقیاس pod‌ها |
+      | **موارد استفاده** | production، ایزولاسیون | dev/test، بهینه‌سازی هزینه |
+
+      template‌های hosted control plane با پسوند `hosted-cp` نام‌گذاری می‌شوند:
+      ```bash
+      kubectl get clustertemplate -n kcm-system | grep hosted
+      ```
+
+      provider‌های پشتیبانی‌شده: AWS، Azure، GCP، OpenStack، VMware، KubeVirt.
+    examples:
+      - q: "کی یک hosted control plane را به جای standalone انتخاب می‌کنید؟"
+        a: "برای محیط‌های dev/test یا وقتی بهینه‌سازی هزینه مهم است — hosted control plane‌ها resource کمتری مصرف می‌کنند."
+        labels: ["Cluster", "k0rdent"]
+
+      - type: multiple-choice
+        q: "کدام‌یک مزایای hosted control plane هستند؟ (چند گزینه)"
+        options:
+          - text: "هزینه پایین‌تر — نیاز به Node‌های control plane اختصاصی نیست"
+            correct: true
+          - text: "استقلال کامل از management cluster"
+          - text: "مقیاس‌بندی پویا مبتنی بر pod"
+            correct: true
+          - text: "مدیریت متمرکز control plane"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-07-check.svg"
+    image_caption: "دانش خود را از MultiClusterService و hosted control plane‌ها آزمایش کنید"
+    explanation: "درک خود از سرویس‌های چند-cluster و معماری‌های hosted را آزمایش کنید!"
+    examples:
+      - q: "تفاوت کلیدی بین سرویس‌های ClusterDeployment و MultiClusterService چیست؟"
+        type: input
+        a:
+          - "MultiClusterService به بسیاری از cluster‌ها با label selector deploy می‌کند"
+          - "MultiClusterService به‌طور همزمان چندین cluster را هدف قرار می‌دهد"
+          - "MultiClusterService از label selector برای هدف قرار دادن بسیاری از cluster‌ها استفاده می‌کند"
+        labels: ["Quiz"]
+      - q: "در یک hosted control plane، control plane کجا اجرا می‌شود؟"
+        type: select
+        options:
+          - text: "روی Node‌های اختصاصی در child cluster"
+          - text: "به‌عنوان pod داخل management cluster"
+            correct: true
+          - text: "روی یک VM cloud جداگانه که کاربر برای آن پرداخت می‌کند"
+          - text: "در یک serverless function"
+        labels: ["Quiz"]
+      - q: "کدام‌یک موارد استفاده معتبر برای MultiClusterService هستند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "Deploy monitoring به همه cluster‌های production به‌یک‌باره"
+            correct: true
+          - text: "اجرای CNI plugin روی هر cluster با label خاص"
+            correct: true
+          - text: "اجرای اپلیکیشن شما روی یک cluster تکی"
+          - text: "اعمال سیاست‌های امنیتی در چندین namespace یک cluster"
+        labels: ["Quiz"]

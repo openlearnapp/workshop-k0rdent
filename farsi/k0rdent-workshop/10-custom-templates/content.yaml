@@ -1,0 +1,285 @@
+version: 2
+number: 11
+title: "ایجاد Template‌های سفارشی"
+description: "ساختن، بسته‌بندی و deploy ClusterTemplate‌ها و ServiceTemplate‌های خودتان."
+image: "images/lesson-header.svg"
+image_caption: "Blueprint و Helm chart — بلوک‌های سازنده template‌های سفارشی"
+
+sections:
+  - title: "چرا Template‌های سفارشی؟"
+    image: "images/section-01-why-custom.svg"
+    image_caption: "Template‌های سفارشی نیازهای خاص سازمان را حل می‌کنند: امنیت، منطقه، استانداردها"
+    explanation: |
+      در حالی که k0rdent با template‌های از پیش ساخته‌شده زیادی ارائه می‌شود، اغلب به موارد سفارشی نیاز دارید:
+
+      - **پیش‌فرض‌های خاص سازمان** — نوع instance سفارشی، شبکه‌بندی، منطقه‌ها
+      - **سخت‌سازی امنیتی** — سیاست‌های امنیتی از پیش پیکربندی‌شده
+      - **استانداردسازی** — اجرای پیکربندی‌های cluster یکنواخت
+      - **provider‌های سفارشی** — پشتیبانی از infrastructure غیراستاندارد
+
+      Template‌های سفارشی همان ساختار template‌های داخلی را دارند — آنها Helm chart هستند که شامل resource‌های CAPI می‌شوند.
+    examples:
+      - q: "چه زمانی به یک ClusterTemplate سفارشی نیاز دارید؟"
+        a: "وقتی به پیش‌فرض‌های خاص سازمان، سخت‌سازی امنیتی، پیکربندی‌های استاندارد یا پشتیبانی از infrastructure غیراستاندارد نیاز دارید."
+        labels: ["Templates", "k0rdent"]
+
+  - title: "ساختار ClusterTemplate"
+    image: "images/section-02-structure.svg"
+    image_caption: "ساختار پوشه Helm chart در ClusterTemplate: Chart.yaml، values.yaml، templates/"
+    explanation: |
+      یک ClusterTemplate یک Helm chart با این ساختار را می‌پوشاند:
+
+      ```
+      my-custom-template/
+      ├── Chart.yaml          # metadata Chart
+      ├── values.yaml         # پارامترهای پیش‌فرض
+      ├── values.schema.json  # اعتبارسنجی پارامتر
+      └── templates/          # manifest‌های Kubernetes CAPI
+          ├── cluster.yaml
+          ├── controlplane.yaml
+          ├── machinedeployment.yaml
+          └── ...
+      ```
+
+      پوشه `templates/` شامل CAPI object‌ها (Machine، Cluster، MachineDeployment) است که از `{{ .Values.xxx }}` برای parameterization استفاده می‌کنند.
+
+      **نقطه شروع:** یک template موجود را از [مخزن GitHub k0rdent](https://github.com/k0rdent/kcm/tree/main/templates/cluster) clone کنید.
+    examples:
+      - q: "داخل یک Helm chart ClusterTemplate چه چیزی است؟"
+        a: "Chart.yaml، values.yaml، values.schema.json و یک پوشه templates/ شامل manifest‌های Kubernetes CAPI."
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["Chart.yaml", "metadata Helm chart (نام، نسخه، توضیحات)"]
+          - ["values.yaml", "پارامترهای پیکربندی پیش‌فرض"]
+          - ["values.schema.json", "JSON Schema برای اعتبارسنجی پارامتر"]
+
+  - title: "تغییر یک Template موجود"
+    image: "images/section-03-modify.svg"
+    image_caption: "تغییر values.yaml → به‌روزرسانی Chart.yaml → helm package → helm push"
+    explanation: |
+      ساده‌ترین رویکرد تغییر یک template موجود است:
+
+      **مرحله ۱: بررسی chart**
+      بررسی کنید `values.yaml` چگونه در template‌ها ارجاع می‌شود.
+
+      **مرحله ۲: سفارشی‌سازی values.yaml**
+      ```yaml
+      # values.yaml
+      clusterName: ""
+      controlPlaneNumber: 3
+      workerNumber: 3
+      controlPlane:
+        instanceType: t3.medium
+        rootVolumeSize: 50
+      worker:
+        instanceType: t3.large
+        rootVolumeSize: 100
+      region: eu-central-1
+      ```
+
+      **مرحله ۳: به‌روزرسانی Chart.yaml**
+      ```yaml
+      apiVersion: v2
+      name: custom-aws-standalone-cp
+      version: 1.0.0
+      description: "Custom AWS standalone with org defaults"
+      annotations:
+        cluster.x-k8s.io/provider: >-
+          infrastructure-aws, control-plane-k0sproject-k0smotron
+      ```
+
+      **مرحله ۴: بسته‌بندی و push**
+      ```bash
+      helm package ./my-custom-template
+      helm push custom-aws-standalone-cp-1.0.0.tgz \
+        oci://registry.example.com/templates
+      ```
+    examples:
+      - q: "چطور پارامترهای قابل سفارشی‌سازی را در یک template شناسایی می‌کنید؟"
+        a: "به دنبال ارجاع‌های {{ .Values.xxx }} در پوشه templates/ بگردید — هر کدام با یک پارامتر در values.yaml مطابقت دارند."
+        labels: ["Templates", "k0rdent"]
+
+      - type: select
+        q: "بعد از تغییر یک chart template چه کاری باید بکنید؟"
+        options:
+          - text: "مستقیماً با kubectl اعمال کنید"
+          - text: "با helm package بسته‌بندی کنید و به registry push کنید"
+            correct: true
+          - text: "management cluster را ریستارت کنید"
+          - text: "ClusterTemplate CRD را مستقیماً ویرایش کنید"
+        labels: ["Quiz"]
+
+  - title: "ثبت Template‌های سفارشی"
+    image: "images/section-04-register.svg"
+    image_caption: "ثبت: HelmRepository source → ClusterTemplate CRD → VALID: true"
+    explanation: |
+      بعد از بسته‌بندی chart خود، آن را با k0rdent ثبت کنید:
+
+      **مرحله ۱: یک Flux source object بسازید:**
+      ```yaml
+      apiVersion: source.toolkit.fluxcd.io/v1
+      kind: HelmRepository
+      metadata:
+        name: custom-repo
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/managed: "true"
+      spec:
+        url: oci://registry.example.com/templates
+        type: oci
+        interval: 10m
+      ```
+
+      **مرحله ۲: ClusterTemplate را بسازید:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplate
+      metadata:
+        name: custom-aws-standalone
+        namespace: kcm-system
+      spec:
+        helm:
+          chartSpec:
+            chart: custom-aws-standalone-cp
+            version: 1.0.0
+            interval: 10m
+            sourceRef:
+              kind: HelmRepository
+              name: custom-repo
+      ```
+
+      **مرحله ۳: تأیید کنید:**
+      ```bash
+      kubectl get clustertemplate custom-aws-standalone -n kcm-system
+      ```
+
+      وقتی chart دریافت و اعتبارسنجی شد باید `VALID: true` نشان دهد.
+    examples:
+      - q: "برای ثبت یک template سفارشی به چه دو object نیاز دارید؟"
+        a: "یک Flux source object (HelmRepository، GitRepository یا OCIRepository) و ClusterTemplate CRD."
+        labels: ["Templates", "k0rdent"]
+
+  - title: "ServiceTemplate‌های سفارشی"
+    image: "images/section-05-service-templates.svg"
+    image_caption: "ServiceTemplate با k8sConstraint و مسیرهای ارتقاء ServiceTemplateChain"
+    explanation: |
+      ایجاد ServiceTemplate‌های سفارشی از الگوی مشابهی پیروی می‌کند:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplate
+      metadata:
+        name: my-monitoring-stack-1.0.0
+        namespace: kcm-system
+      spec:
+        k8sConstraint: ">=1.28.0 <1.32.0"
+        helm:
+          chartSpec:
+            chart: kube-prometheus-stack
+            version: 62.3.0
+            interval: 10m0s
+            sourceRef:
+              kind: HelmRepository
+              name: prometheus-community
+        helmOptions:
+          wait: true
+          timeout: 10m
+          createNamespace: true
+      ```
+
+      افزوده‌های کلیدی:
+      - `k8sConstraint` — تضمین می‌کند سرویس فقط روی cluster‌های سازگار deploy می‌شود
+      - `helmOptions` — رفتار نصب را کنترل می‌کند
+
+      **ServiceTemplateChain** برای مسیرهای ارتقاء:
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplateChain
+      metadata:
+        name: my-monitoring-stack
+      spec:
+        supportedTemplates:
+          - name: my-monitoring-stack-1.0.0
+          - name: my-monitoring-stack-0.9.0
+            availableUpgrades:
+              - name: my-monitoring-stack-1.0.0
+      ```
+    examples:
+      - q: "چطور یک ServiceTemplate را به نسخه‌های خاص Kubernetes محدود می‌کنید؟"
+        a: "spec.k8sConstraint را با یک محدودیت semver مثل '>=1.28.0 <1.32.0' تنظیم کنید."
+        labels: ["Templates", "Services"]
+
+      - type: multiple-choice
+        q: "کدام helmOptions در ServiceTemplate‌ها در دسترس هستند؟ (چند گزینه)"
+        options:
+          - text: "wait — منتظر آماده شدن resource‌ها بمان"
+            correct: true
+          - text: "atomic — در صورت شکست rollback کن"
+            correct: true
+          - text: "autoScale — HPA را فعال کن"
+          - text: "createNamespace — اگر namespace وجود نداشت بساز"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "اعتبارسنجی و عیب‌یابی Template"
+    image: "images/section-06-validation.svg"
+    image_caption: "kubectl get clustertemplate که VALID: true/false نشان می‌دهد — با validationError debug کنید"
+    explanation: |
+      اگر template `VALID: false` نشان می‌دهد، بررسی کنید:
+
+      ```bash
+      # خطای اعتبارسنجی را بررسی کنید
+      kubectl get clustertemplate custom-template \
+        -n kcm-system -o jsonpath='{.status.validationError}'
+
+      # وضعیت Flux source را بررسی کنید
+      kubectl get helmrepository custom-repo -n kcm-system
+
+      # بررسی کنید provider‌ها نصب هستند
+      kubectl get providertemplate -n kcm-system
+      ```
+
+      **مشکلات متداول:**
+      - **provider‌های گم‌شده** — template به provider‌هایی ارجاع می‌دهد که نصب نشده‌اند
+      - **نقض schema** — مقادیر با JSON schema مطابقت ندارند
+      - **خطاهای source** — Flux نمی‌تواند chart را از repository دریافت کند
+      - **تعارض نسخه** — نسخه‌های provider contract مطابقت ندارند
+    examples:
+      - q: "template سفارشی شما VALID: false نشان می‌دهد. اول چه چیزی را بررسی می‌کنید؟"
+        a: ".status.validationError را برای پیام خطای خاص بررسی کنید، سپس Flux source و provider‌های نصب‌شده را تأیید کنید."
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["validationError", "فیلد status که نشان می‌دهد چرا یک template اعتبارسنجی شکست خورده"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-07-check.svg"
+    image_caption: "دانش خود را از template‌های سفارشی در k0rdent آزمایش کنید"
+    explanation: "درک خود از template‌های سفارشی را قبل از ادامه آزمایش کنید!"
+    examples:
+      - q: "یک ClusterTemplate سفارشی یک Helm chart است. چه چیزی در پوشه templates/ قرار دارد؟"
+        type: input
+        a:
+          - "CAPI manifests"
+          - "CAPI Kubernetes manifests"
+          - "Cluster API resources"
+        labels: ["Quiz"]
+      - q: "بعد از بسته‌بندی یک template سفارشی، گام صحیح بعدی چیست؟"
+        type: select
+        options:
+          - text: "مستقیماً با kubectl apply اعمال کنید"
+          - text: "به registry push کنید، یک Flux source بسازید، سپس ClusterTemplate CRD را بسازید"
+            correct: true
+          - text: "ClusterTemplate موجود را در kcm-system ویرایش کنید"
+          - text: "management cluster را ریستارت کنید"
+        labels: ["Quiz"]
+      - q: "کدام فیلدها در یک ServiceTemplate سفارشی الزامی هستند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "spec.helm.chartSpec — ارجاع chart"
+            correct: true
+          - text: "metadata.name — نام template"
+            correct: true
+          - text: "spec.k8sConstraint — همیشه الزامی است"
+          - text: "apiVersion و kind"
+            correct: true
+        labels: ["Quiz"]

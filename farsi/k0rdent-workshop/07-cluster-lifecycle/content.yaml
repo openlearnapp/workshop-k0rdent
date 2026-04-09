@@ -1,0 +1,273 @@
+version: 2
+number: 8
+title: "مدیریت چرخه حیات Cluster"
+description: "به‌روزرسانی cluster‌ها، فعال‌سازی تشخیص drift، پذیرش cluster‌های موجود و خاموش کردن deployment‌ها."
+image: "images/lesson-header.svg"
+image_caption: "چرخه حیات cluster: به‌روزرسانی از طریق template patch، تشخیص drift، پذیرش، خاموشی"
+sections:
+  - title: "به‌روزرسانی یک Cluster"
+    image: "images/section-01-update.svg"
+    image_caption: "kubectl patch ClusterDeployment برای ارجاع به نسخه template جدید"
+    explanation: |
+      k0rdent از رویکرد **template تغییرناپذیر** برای به‌روزرسانی cluster استفاده می‌کند. به جای تغییر مستقیم ClusterDeployment، template‌ای که به آن ارجاع می‌دهد را تغییر می‌دهید:
+
+      ```bash
+      kubectl patch clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system \
+        --patch '{"spec":{"template":"remote-cluster-1-0-22"}}' \
+        --type=merge
+      ```
+
+      k0rdent تغییر template را شناسایی کرده و به‌طور خودکار cluster را با پیکربندی جدید reconcile می‌کند.
+
+      **تأیید به‌روزرسانی:**
+      ```bash
+      kubectl get clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system
+
+      # وضعیت دقیق
+      kubectl get clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system -o=yaml
+      ```
+    examples:
+      - q: "چطور یک cluster را در k0rdent به‌روز می‌کنید؟"
+        a: "ClusterDeployment را patch می‌کنید تا به یک نسخه ClusterTemplate جدید ارجاع دهد. k0rdent cluster را به‌صورت خودکار reconcile می‌کند."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["Reconciliation", "فرآیندی که k0rdent وضعیت مطلوب در مقابل واقعی را شناسایی و تغییرات لازم را اعمال می‌کند"]
+
+      - type: select
+        q: "چه چیزی یک به‌روزرسانی cluster را در k0rdent آغاز می‌کند؟"
+        options:
+          - text: "اجرای دستور kubectl upgrade"
+          - text: "تغییر ارجاع template در ClusterDeployment"
+            correct: true
+          - text: "ریستارت management cluster"
+          - text: "ویرایش مستقیم ClusterTemplate"
+        labels: ["Quiz"]
+
+  - title: "محدودیت‌های Template Chain"
+    image: "images/section-02-chains.svg"
+    image_caption: "ClusterTemplateChain کدام نسخه‌های template می‌توانند به کدام ارتقاء داده شوند را محدود می‌کند"
+    explanation: |
+      همه انتقال‌های template مجاز نیستند. **ClusterTemplateChain‌ها** مسیرهای ارتقاء معتبر را تعریف می‌کنند:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplateChain
+      metadata:
+        name: remote-cluster
+      spec:
+        supportedTemplates:
+          - name: remote-cluster-1-0-22
+          - name: remote-cluster-1-0-19
+            availableUpgrades:
+              - name: remote-cluster-1-0-22
+      ```
+
+      این chain می‌گوید: می‌توانید از `1-0-19` به `1-0-22` ارتقاء دهید، اما نمی‌توانید نسخه‌ها را رد کنید یا به دلخواه downgrade کنید.
+
+      chain‌های موجود را بررسی کنید:
+      ```bash
+      kubectl get clustertemplatechain -n kcm-system
+      ```
+    examples:
+      - q: "اگر سعی کنید ClusterDeployment را با template پشتیبانی‌نشده patch کنید چه اتفاقی می‌افتد؟"
+        a: "به‌روزرسانی رد می‌شود چون مسیر ارتقاء در ClusterTemplateChain تعریف نشده."
+        labels: ["Cluster", "Templates"]
+
+  - title: "تشخیص Drift"
+    image: "images/section-03-drift.svg"
+    image_caption: "حالت ContinuousWithDriftDetection تغییرات غیرمجاز resource را به‌صورت خودکار اصلاح می‌کند"
+    explanation: |
+      تشخیص drift resource‌های deploy‌شده را نظارت کرده و تغییرات غیرمجاز را به‌صورت خودکار اصلاح می‌کند:
+
+      **فعال‌سازی تشخیص drift** با تنظیم `syncMode` در deployment:
+
+      ```yaml
+      spec:
+        serviceSpec:
+          syncMode: ContinuousWithDriftDetection
+      ```
+
+      **حالت‌های sync موجود:**
+
+      | حالت | رفتار |
+      |------|----------|
+      | `OneTime` | یک‌بار deploy، تغییرات بعدی را نادیده می‌گیرد |
+      | `Continuous` | deploy و تغییرات پیکربندی را به‌صورت خودکار اعمال می‌کند |
+      | `ContinuousWithDriftDetection` | drift را نظارت کرده و به‌صورت خودکار reconcile می‌کند |
+      | `DryRun` | گزارش‌ها را بدون اعمال تغییرات تولید می‌کند |
+
+      وقتی drift شناسایی می‌شود، drift-detection-manager k0rdent `ResourceSummary` را به‌روز می‌کند و addon-controller را برای reconcile و deploy مجدد trigger می‌کند.
+    examples:
+      - q: "ContinuousWithDriftDetection چه کاری انجام می‌دهد؟"
+        a: "resource‌های deploy‌شده را با استفاده از hash value نظارت کرده و هر تغییر غیرمجاز را به‌صورت خودکار به وضعیت مطلوب برمی‌گرداند."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["syncMode", "نحوه مدیریت تغییرات resource‌های deploy‌شده توسط k0rdent را کنترل می‌کند"]
+          - ["ContinuousWithDriftDetection", "حالت sync که drift پیکربندی را به‌صورت خودکار اصلاح می‌کند"]
+          - ["ResourceSummary", "object که وضعیت resource را برای تشخیص drift دنبال می‌کند"]
+
+      - type: select
+        q: "می‌خواهید یک سرویس را یک‌بار deploy کنید و هیچ‌وقت به‌صورت خودکار به‌روز نشود. کدام syncMode؟"
+        options:
+          - text: "Continuous"
+          - text: "OneTime"
+            correct: true
+          - text: "ContinuousWithDriftDetection"
+          - text: "DryRun"
+        labels: ["Quiz"]
+
+  - title: "نادیده گرفتن Drift و استثناها"
+    image: "images/section-04-drift-ignore.svg"
+    image_caption: "driftIgnore و driftExclusions برای کنترل دقیق drift"
+    explanation: |
+      گاهی می‌خواهید resource‌ها یا فیلدهای خاصی را از اصلاح drift استثنا کنید:
+
+      **Drift Ignore** — استثنای کل resource‌ها:
+      ```yaml
+      spec:
+        serviceSpec:
+          driftIgnore:
+            - apiVersion: v1
+              kind: ConfigMap
+              name: my-config
+              namespace: default
+      ```
+
+      resource‌های نادیده گرفته‌شده annotation `projectsveltos.io/driftDetectionIgnore: ok` دریافت می‌کنند.
+
+      **Drift Exclusions** — استثنای فیلدهای خاص:
+      ```yaml
+      spec:
+        serviceSpec:
+          driftExclusions:
+            - target:
+                kind: Deployment
+                name: my-app
+              paths:
+                - "/spec/replicas"
+      ```
+
+      این اجازه می‌دهد HPA تعداد replica را تغییر دهد بدون اینکه تشخیص drift را trigger کند.
+    examples:
+      - q: "چطور از برگشت تشخیص drift به تغییرات replica مدیریت‌شده توسط HPA جلوگیری می‌کنید؟"
+        a: "از driftExclusions استفاده کنید تا مسیر /spec/replicas را از تشخیص drift برای آن Deployment استثنا کنید."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["driftIgnore", "کل resource‌ها را از اصلاح drift استثنا می‌کند"]
+          - ["driftExclusions", "مسیرهای JSON خاص را از تشخیص drift استثنا می‌کند"]
+
+  - title: "پذیرش Cluster‌های موجود"
+    image: "images/section-05-adopt.svg"
+    image_caption: "template adopted-cluster cluster‌های موجود را تحت مدیریت k0rdent می‌آورد"
+    explanation: |
+      می‌توانید cluster‌های Kubernetes موجود را تحت مدیریت k0rdent بیاورید:
+
+      **پیش‌نیازها:**
+      - Kubeconfig برای cluster هدف
+      - اتصال شبکه بین management و cluster‌های هدف
+
+      **مراحل:**
+      1. یک Credential برای infrastructure cluster هدف بسازید
+      2. یک ClusterDeployment با template `adopted-cluster` بسازید:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterDeployment
+      metadata:
+        name: adopted-production
+        namespace: kcm-system
+      spec:
+        template: adopted-cluster-<version>
+        credential: target-cred
+        dryRun: false
+        config: {}
+      ```
+
+      3. اعمال و تأیید کنید:
+      ```bash
+      kubectl apply -f adopted-cluster.yaml
+      kubectl get clusterdeployment.kcm adopted-production \
+        -n kcm-system -o=yaml
+      ```
+
+      cluster پذیرفته‌شده حالا می‌تواند مثل هر cluster deploy‌شده توسط k0rdent نظارت و مدیریت شود.
+    examples:
+      - q: "آیا k0rdent می‌تواند cluster‌هایی که خودش نساخته را مدیریت کند؟"
+        a: "بله — با استفاده از template adopted-cluster، می‌توانید cluster‌های موجود را تحت مدیریت k0rdent بیاورید."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["adopted-cluster", "Template برای آوردن cluster‌های موجود تحت مدیریت k0rdent"]
+
+      - type: select
+        q: "قبل از پذیرش یک cluster production چه کاری باید بکنید؟"
+        options:
+          - text: "اول cluster موجود را حذف کنید"
+          - text: "از dryRun: true برای اعتبارسنجی پیکربندی استفاده کنید"
+            correct: true
+          - text: "cluster را به آخرین نسخه ارتقاء دهید"
+          - text: "همه workload‌ها را از cluster حذف کنید"
+        labels: ["Quiz"]
+
+  - title: "خاموش کردن یک Cluster"
+    image: "images/section-06-teardown.svg"
+    image_caption: "kubectl delete ClusterDeployment — cluster را deprovisioning می‌کند و اختیاراً resource‌های cloud را پاک می‌کند"
+    explanation: |
+      برای حذف یک child cluster:
+
+      ```bash
+      kubectl delete ClusterDeployment my-hetzner-cluster -n kcm-system
+      ```
+
+      اگر `cleanupOnDeletion: true` در spec تنظیم کردید، k0rdent همچنین resource‌های cloud orphaned (LoadBalancer‌ها، حجم‌های ذخیره‌سازی) را پاک می‌کند.
+
+      **هشدار:** این عملیاتی مخرب است. همه workload‌های روی child cluster از بین می‌روند. ابتدا از داده‌های مهم پشتیبان بگیرید.
+    examples:
+      - q: "وقتی ClusterDeployment را حذف می‌کنید چه اتفاقی برای workload‌ها می‌افتد؟"
+        a: "همه workload‌های روی child cluster از بین می‌روند. cluster و Node‌هایش deprovisioning می‌شوند."
+        labels: ["Cluster", "k0rdent"]
+
+      - type: select
+        q: "cleanupOnDeletion: true چه کاری انجام می‌دهد؟"
+        options:
+          - text: "قبل از حذف از cluster پشتیبان می‌گیرد"
+          - text: "resource‌های cloud orphaned مثل LoadBalancer‌ها و storage را حذف می‌کند"
+            correct: true
+          - text: "از حذف تصادفی جلوگیری می‌کند"
+          - text: "workload‌ها را به cluster دیگری منتقل می‌کند"
+        labels: ["Quiz"]
+
+  - title: "🖥️ آزمون دانش"
+    image: "images/section-07-check.svg"
+    image_caption: "دانش خود را از مدیریت چرخه حیات cluster k0rdent آزمایش کنید"
+    explanation: "درک خود از به‌روزرسانی cluster، drift و خاموشی را آزمایش کنید!"
+    examples:
+      - q: "چطور یک cluster را به نسخه جدید Kubernetes در k0rdent به‌روز می‌کنید؟"
+        type: input
+        a:
+          - "فیلد template را در ClusterDeployment تغییر دهید"
+          - "ارجاع template را در ClusterDeployment به‌روز کنید"
+          - "ClusterDeployment را ویرایش کنید و template را تغییر دهید"
+        labels: ["Quiz"]
+      - q: "configuration drift در k0rdent چیست؟"
+        type: select
+        options:
+          - text: "وقتی Node‌های cluster به availability zone متفاوتی منتقل می‌شوند"
+          - text: "وقتی وضعیت واقعی cluster از آنچه k0rdent تعریف کرده منحرف می‌شود — به‌صورت خودکار شناسایی و گزارش می‌شود"
+            correct: true
+          - text: "وقتی management cluster با GitHub همگام نیست"
+          - text: "وقتی دو cluster پیکربندی یکسانی دارند"
+        labels: ["Quiz"]
+      - q: "k0rdent از کدام عملیات چرخه حیات پشتیبانی می‌کند؟ (چند گزینه)"
+        type: multiple-choice
+        options:
+          - text: "به‌روزرسانی نسخه Kubernetes از طریق تغییر template"
+            correct: true
+          - text: "پذیرش cluster‌های موجود که توسط k0rdent ساخته نشده‌اند"
+            correct: true
+          - text: "مقیاس‌بندی خودکار Node‌ها بر اساس مصرف CPU"
+          - text: "خاموش کردن cluster‌ها با پاک‌سازی اختیاری resource‌های cloud"
+            correct: true
+        labels: ["Quiz"]
