@@ -1,0 +1,307 @@
+version: 2
+number: 9
+title: "Services mit KSM"
+description: "Anwendungen auf Child-Clustern deployen und verwalten mit k0rdent State Manager und ServiceTemplates."
+image: "images/lesson-header.svg"
+image_caption: "KSM deployed Services auf Child-Clustern via ProjectSveltos"
+sections:
+  - title: "KSM-Überblick"
+    image: "images/section-01-ksm-overview.svg"
+    image_caption: "KSM-Architektur: ProjectSveltos als eingebaute CD-Lösung"
+    explanation: |
+      Der **k0rdent State Manager (KSM)** bietet zentralisiertes Management für Anwendungen, die auf Child-Clustern deployed werden.
+
+      Wichtige Fähigkeiten:
+      - **Deklaratives Service-Management** — definiere, was wo deployed werden soll
+      - **Provider-Flexibilität** — eingebautes ProjectSveltos oder eigene CD-Lösungen
+      - **Zentralisierte Kontrolle** — alle Services vom Management-Cluster aus verwalten
+      - **Lifecycle-Management** — deployen, skalieren, aktualisieren, upgraden und beenden
+
+      KSM verwendet eine "Provider"-Architektur. Der **eingebaute Provider** verwendet ProjectSveltos, aber du kannst eigene Provider mit alternativen CD-Lösungen bauen.
+    examples:
+      - q: "Was ist KSM?"
+        a: "k0rdent State Manager — zentralisiertes Management für Anwendungen und Services, die auf Child-Clustern deployed werden."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["KSM", "k0rdent State Manager für Service-Lifecycle-Management"]
+          - ["ProjectSveltos", "Eingebaute CD-Lösung, die von KSM verwendet wird"]
+          - ["Built-in provider", "Standard-KSM-Provider, betrieben von ProjectSveltos"]
+
+      - type: select
+        q: "Was verwendet KSM als eingebaute CD-Lösung?"
+        options:
+          - text: "ArgoCD"
+          - text: "FluxCD"
+          - text: "ProjectSveltos"
+            correct: true
+          - text: "Jenkins"
+        labels: ["Quiz"]
+
+  - title: "Ein ServiceTemplate erstellen"
+    image: "images/section-02-servicetemplate.svg"
+    image_caption: "HelmRepository + ServiceTemplate-Erstellung für nginx-ingress"
+    explanation: |
+      ServiceTemplates definieren, wie Anwendungen deployed werden. Hier ein Beispiel für nginx-ingress:
+
+      **Schritt 1: Eine HelmRepository-Source erstellen** (falls noch nicht vorhanden):
+      ```yaml
+      apiVersion: source.toolkit.fluxcd.io/v1
+      kind: HelmRepository
+      metadata:
+        name: ingress-nginx-repo
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/managed: "true"
+      spec:
+        url: https://kubernetes.github.io/ingress-nginx
+        interval: 10m
+      ```
+
+      **Schritt 2: Das ServiceTemplate erstellen:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplate
+      metadata:
+        name: ingress-nginx-4.11.3
+        namespace: kcm-system
+      spec:
+        helm:
+          chartSpec:
+            chart: ingress-nginx
+            version: 4.11.3
+            interval: 10m0s
+            sourceRef:
+              kind: HelmRepository
+              name: ingress-nginx-repo
+      ```
+
+      **Schritt 3: Verifizieren:**
+      ```bash
+      kubectl get servicetemplate -n kcm-system
+      ```
+
+      Das Template sollte `VALID: true` zeigen.
+    examples:
+      - q: "Welche zwei Objekte werden benötigt, um ein Helm-basiertes ServiceTemplate zu erstellen?"
+        a: "Ein HelmRepository-Source-Objekt (mit k0rdent.mirantis.com/managed-Label) und das ServiceTemplate selbst."
+        labels: ["Services", "Templates"]
+
+      - type: input
+        q: "Welches Label müssen Source-Objekte haben, damit k0rdent sie erkennt?"
+        a:
+          - "k0rdent.mirantis.com/managed: \"true\""
+          - 'k0rdent.mirantis.com/managed: "true"'
+        labels: ["Quiz"]
+
+  - title: "Services zu einem Cluster hinzufügen"
+    image: "images/section-03-add-services.svg"
+    image_caption: "serviceSpec.services-Array im ClusterDeployment — Services via Patch hinzufügen"
+    explanation: |
+      Services zu einem bestehenden ClusterDeployment hinzufügen mit `serviceSpec`:
+
+      ```yaml
+      spec:
+        serviceSpec:
+          services:
+            - template: ingress-nginx-4.11.3
+              name: ingress-nginx
+              namespace: ingress-nginx
+          priority: 100
+      ```
+
+      Ein bestehendes ClusterDeployment patchen:
+      ```bash
+      kubectl patch clusterdeployment mein-hetzner-cluster \
+        -n kcm-system --type='merge' \
+        -p '{
+          "spec": {
+            "serviceSpec": {
+              "services": [
+                {
+                  "template": "ingress-nginx-4.11.3",
+                  "name": "ingress-nginx",
+                  "namespace": "ingress-nginx"
+                }
+              ]
+            }
+          }
+        }'
+      ```
+
+      Oder es von Anfang an im ClusterDeployment einschließen.
+    examples:
+      - q: "Wie fügst du einen Service zu einem bestehenden Cluster hinzu?"
+        a: "Das spec.serviceSpec.services-Array des ClusterDeployments mit der Service-Template-Referenz patchen."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["serviceSpec", "Abschnitt des ClusterDeployments, der zu deployende Services definiert"]
+          - ["priority", "Numerischer Wert für Konfliktlösung — höhere Zahlen gewinnen"]
+
+      - type: select
+        q: "Kannst du Services zu einem bereits laufenden Cluster hinzufügen?"
+        options:
+          - text: "Nein — Services müssen zum Zeitpunkt der Cluster-Erstellung definiert werden"
+          - text: "Ja — das serviceSpec des ClusterDeployments patchen"
+            correct: true
+          - text: "Nur über das k0rdent-Dashboard"
+        labels: ["Quiz"]
+
+  - title: "ServiceTemplate Source-Typen"
+    image: "images/section-04-source-types.svg"
+    image_caption: "Drei ServiceTemplate Source-Typen: Helm, Kustomize, rohe Ressourcen"
+    explanation: |
+      ServiceTemplates unterstützen drei Deployment-Methoden:
+
+      **1. Helm-Charts** (am häufigsten)
+      ```yaml
+      spec:
+        helm:
+          chartSpec:
+            chart: mein-chart
+            version: 1.0.0
+            sourceRef:
+              kind: HelmRepository
+              name: mein-repo
+      ```
+
+      **2. Kustomize**
+      ```yaml
+      spec:
+        kustomize:
+          localSourceRef:
+            kind: GitRepository
+            name: mein-repo
+          deploymentType: Remote
+          path: "./overlays/production"
+      ```
+
+      **3. Rohe Ressourcen**
+      ConfigMaps oder Secrets mit Kubernetes-Manifesten verwenden:
+      ```yaml
+      spec:
+        resources:
+          localSourceRef:
+            kind: ConfigMap
+            name: meine-manifeste
+      ```
+
+      Source-Typen schließen sich gegenseitig aus — jedes ServiceTemplate verwendet genau einen.
+    examples:
+      - q: "Welche drei Deployment-Methoden unterstützen ServiceTemplates?"
+        a: "Helm-Charts, Kustomize und rohe Ressourcen (via ConfigMap/Secret)."
+        labels: ["Services", "Templates"]
+        rel:
+          - ["Kustomize", "Kubernetes-natives Konfigurationsmanagement mit Overlays"]
+          - ["Raw resources", "Direkte Kubernetes-Manifeste in ConfigMap oder Secret"]
+
+      - type: multiple-choice
+        q: "Welche sind gültige ServiceTemplate Source-Typen? (Mehrfachauswahl)"
+        options:
+          - text: "Helm-Charts"
+            correct: true
+          - text: "Kustomize"
+            correct: true
+          - text: "Terraform-Module"
+          - text: "Rohe Ressourcen via ConfigMap"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "Service-Status prüfen"
+    image: "images/section-05-status.svg"
+    image_caption: "kubectl-Befehle zum Prüfen von ServiceTemplate-Validierung und Deployment-Status"
+    explanation: |
+      Service-Deployment-Status überwachen:
+
+      ```bash
+      # ServiceTemplate-Validierung prüfen
+      kubectl get servicetemplate -A
+
+      # Auf Validierungsfehler prüfen
+      kubectl get servicetemplate ingress-nginx-4.11.3 \
+        -n kcm-system \
+        -o jsonpath='{.status.validationError}'
+
+      # Detaillierter Status
+      kubectl describe servicetemplate ingress-nginx-4.11.3 \
+        -n kcm-system
+      ```
+
+      Der Service-Deployment-Status erscheint auch im Status des ClusterDeployments:
+      ```bash
+      kubectl get clusterdeployment.kcm mein-hetzner-cluster \
+        -n kcm-system -o yaml
+      ```
+
+      Den `serviceConditions`-Abschnitt im Status suchen.
+    examples:
+      - q: "Wie prüfst du, ob ein ServiceTemplate gültig ist?"
+        a: "kubectl get servicetemplate -A zeigt den VALID-Status, oder .status.validationError auf Fehler prüfen."
+        labels: ["Services", "CLI"]
+
+  - title: "Beach-Head-Services"
+    image: "images/section-06-beachhead.svg"
+    image_caption: "Wesentliche Beach-Head-Services: Ingress, CNI, CSI, cert-manager, Monitoring"
+    explanation: |
+      **Beach-Head-Services** sind wesentliche Services, die einen Kubernetes-Cluster produktionsbereit machen:
+
+      - **Ingress-Controller** (z.B. nginx-ingress)
+      - **CNI-Plugin** (z.B. Calico, Cilium)
+      - **CSI-Treiber** (z.B. für persistenten Storage)
+      - **Cert-manager** (für TLS-Zertifikate)
+      - **Monitoring** (z.B. Prometheus, Grafana)
+
+      Diese werden typischerweise via ServiceTemplates als Teil jedes Cluster-Setups deployed. Du kannst sie im `serviceSpec` des ClusterDeployments konfigurieren oder sie über alle Cluster mit `MultiClusterService` deployen (behandelt in der nächsten Lektion).
+    examples:
+      - q: "Was sind Beach-Head-Services?"
+        a: "Wesentliche Kubernetes-Services (Ingress, CNI, CSI, cert-manager), die einen Cluster tatsächlich für Produktions-Workloads nützlich machen."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["Beach-head services", "Wesentliche Cluster-Services: Ingress, CNI, CSI, cert-manager, Monitoring"]
+          - ["CNI", "Container Network Interface — Networking-Plugin für Kubernetes"]
+          - ["CSI", "Container Storage Interface — Storage-Plugin für Kubernetes"]
+
+      - type: multiple-choice
+        q: "Welche gelten als Beach-Head-Services? (Mehrfachauswahl)"
+        options:
+          - text: "Ingress-Controller"
+            correct: true
+          - text: "Anwendungs-Datenbanken"
+          - text: "CNI-Plugin"
+            correct: true
+          - text: "CSI-Treiber"
+            correct: true
+          - text: "Nutzerorientierte Web-Apps"
+        labels: ["Quiz"]
+
+  - title: "🖥️ Wissens-Check"
+    image: "images/section-07-check.svg"
+    image_caption: "Teste dein Wissen über KSM und Service-Management in k0rdent"
+    explanation: "Teste dein Verständnis des Deployens und Verwaltens von Services mit KSM!"
+    examples:
+      - q: "Welche k0rdent-Komponente deployed Services auf Child-Clustern?"
+        type: input
+        a:
+          - "KSM"
+          - "k0rdent State Manager"
+          - "KSM (k0rdent State Manager)"
+        labels: ["Quiz"]
+      - q: "Wie verknüpfst du einen Service mit einem bestimmten Cluster in k0rdent?"
+        type: select
+        options:
+          - text: "Direkt ein Helm-Release auf dem Child-Cluster erstellen"
+          - text: "Die serviceTemplate-Referenz zum serviceSpec des ClusterDeployments hinzufügen"
+            correct: true
+          - text: "Per SSH auf Worker-Nodes gehen und den Service manuell installieren"
+          - text: "Ein ServiceTemplate mit dem Cluster-Namen in den Metadaten erstellen"
+        labels: ["Quiz"]
+      - q: "Welche Source-Typen können ServiceTemplates verwenden? (Mehrfachauswahl)"
+        type: multiple-choice
+        options:
+          - text: "HelmRepository"
+            correct: true
+          - text: "GitRepository"
+            correct: true
+          - text: "ConfigMap (rohe Ressourcen)"
+            correct: true
+          - text: "Terraform-State-Dateien"
+        labels: ["Quiz"]

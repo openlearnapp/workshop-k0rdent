@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160">
+  <rect width="640" height="160" fill="#0d1117" rx="10" stroke="#58a6ff" stroke-width="1.5" stroke-opacity="0.4"/>
+  <rect x="1" y="1" width="638" height="28" rx="10" fill="#161b22"/>
+  <rect x="1" y="20" width="638" height="9" fill="#161b22"/>
+  <circle cx="18" cy="14" r="5" fill="#f85149" opacity="0.8"/>
+  <circle cx="34" cy="14" r="5" fill="#f0883e" opacity="0.8"/>
+  <circle cx="50" cy="14" r="5" fill="#3fb950" opacity="0.8"/>
+  <text x="320" y="18" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">Hosted vs. Standalone</text>
+  <text x="30" y="65" font-family="monospace" font-size="11" fill="#3fb950">$ kubectl get credentials --all-namespaces</text>
+  <text x="30" y="85" font-family="monospace" font-size="10" fill="#58a6ff">NAMESPACE    NAME         READY</text>
+  <text x="30" y="103" font-family="monospace" font-size="10" fill="#3fb950">kcm-system   remote-cred  True</text>
+  <text x="30" y="130" font-family="monospace" font-size="9" fill="#8b949e">Secret → ClusterIdentity → Credential</text>
+</svg>

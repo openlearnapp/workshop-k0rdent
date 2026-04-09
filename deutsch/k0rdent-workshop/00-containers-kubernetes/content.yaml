@@ -1,0 +1,234 @@
+version: 2
+number: 1
+title: "Container & Kubernetes — Warum?"
+description: "Verstehe Container, Docker, Kubernetes und warum k0rdent darüber hinaus benötigt wird — von absoluten Grundlagen an."
+image: "images/lesson-header.svg"
+image_caption: "Container-Schiff-Analogie: von Docker-Containern zur Kubernetes-Orchestrierung"
+sections:
+  - title: "Was ist ein Container?"
+    image: "images/section-01-containers.svg"
+    image_caption: "Ein Container verpackt eine App mit allem, was sie zum Laufen braucht"
+    explanation: |
+      Stell dir vor, du verschiffst physische Waren. Du packst alles in einen **standardisierten Frachtcontainer** — egal ob er per LKW, Schiff oder Zug transportiert wird. Der Container ist immer gleich. Jeder weiß, wie er damit umgeht.
+
+      Ein **Software-Container** funktioniert genauso:
+
+      - Er verpackt deine Anwendung **zusammen mit allen Abhängigkeiten** (Bibliotheken, Laufzeitumgebung, Konfiguration)
+      - Er läuft identisch auf deinem Laptop, auf einem Server oder in jeder Cloud
+      - Er ist **isoliert** von anderen Containern — keine Konflikte zwischen Apps
+
+      **Vor Containern:**
+      - "Läuft bei mir" war ein echtes Problem
+      - Deployment bedeutete: richtige OS, richtige Laufzeit, richtige Bibliotheken installieren — und hoffen, dass nichts kollidiert
+
+      **Mit Containern:**
+      - Einmal bauen, überall ausführen
+      - Sofortiger Start (Sekunden, nicht Minuten)
+      - Einfach skalieren: einfach mehr Container starten
+
+      | Ohne Container | Mit Containern |
+      |----------------|----------------|
+      | "Läuft bei mir" | Läuft überall identisch |
+      | Langsamer VM-Start (Minuten) | Schneller Start (Sekunden) |
+      | Abhängigkeitskonflikte | Isoliert pro Container |
+      | Schwer zu skalieren | Skalierung durch mehr Container |
+    examples:
+      - q: "docker run nginx"
+        a: "Startet einen nginx-Webserver in einem Container. Lädt das Image herunter, falls es lokal nicht verfügbar ist."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["docker-run", "Einen Container aus einem Image starten", "docker run <image>"]
+          - ["nginx", "Beliebter Webserver, oft als Beispiel-Container verwendet", "image"]
+      - q: "docker ps"
+        a: "Listet alle aktuell laufenden Container auf — zeigt Container-ID, Image, Status und Ports."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["docker-ps", "Laufende Container auflisten", "docker ps"]
+      - q: "Was ist der Unterschied zwischen einem Container und einer VM?"
+        a: "VMs virtualisieren ein komplettes Betriebssystem (langsam, schwergewichtig). Container teilen den Host-OS-Kernel — sie sind leichtgewichtig, schnell und verbrauchen weit weniger Ressourcen."
+        labels: ["Basics"]
+        rel:
+          - ["VM", "Virtuelle Maschine — vollständige OS-Virtualisierung", "schwergewichtig, Minuten zum Starten"]
+          - ["container", "Leichtgewichtige Prozessisolierung mit gemeinsamem Host-OS-Kernel", "Sekunden zum Starten"]
+
+  - title: "Was ist Kubernetes?"
+    image: "images/section-02-kubernetes.svg"
+    image_caption: "Kubernetes als Hafenmeister: orchestriert viele Container auf vielen Schiffen"
+    explanation: |
+      Du hast jetzt Container. Aber was passiert, wenn du **100 Container auf 10 Servern** hast? Wer startet sie? Wer startet einen abgestürzten Container neu? Wer verteilt den Traffic?
+
+      Genau da kommt **Kubernetes** (oft **K8s** genannt) ins Spiel. Stell es dir als den **Hafenmeister** vor, der alle Containerschiffe koordiniert.
+
+      Kubernetes kümmert sich um:
+      - **Scheduling** — entscheidet, welcher Server welchen Container ausführt
+      - **Selbstheilung** — startet abgestürzte Container automatisch neu
+      - **Skalierung** — fügt Container basierend auf Last hinzu oder entfernt sie
+      - **Load Balancing** — verteilt Traffic auf Container
+      - **Rolling Updates** — aktualisiert Container ohne Ausfallzeiten
+
+      **Wichtige Kubernetes-Konzepte:**
+
+      | Konzept | Was es ist |
+      |---------|-----------|
+      | **Pod** | Die kleinste Einheit — 1 oder mehr Container, die zusammen laufen |
+      | **Node** | Ein Server (physisch oder virtuell), der Pods ausführt |
+      | **Cluster** | Eine Gruppe von Nodes, die gemeinsam verwaltet werden |
+      | **Deployment** | Definiert, wie viele Kopien deiner App laufen sollen |
+      | **Service** | Ein stabiler Netzwerk-Endpunkt für deine App |
+
+      Die **Control Plane** ist das Gehirn — sie trifft Entscheidungen. **Worker Nodes** sind die Muskeln — sie führen deine Container aus.
+    examples:
+      - q: "kubectl get pods"
+        a: "Listet alle Pods im aktuellen Namespace auf — zeigt Name, Status, Neustarts und Alter."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["kubectl", "Kubernetes-CLI-Tool für die Interaktion mit Clustern", "command"]
+          - ["Pod", "Kleinste deploybare Einheit in Kubernetes — 1+ Container", "concept"]
+      - q: "kubectl get nodes"
+        a: "Listet alle Nodes im Cluster auf — zeigt Name, Status, Rollen und Kubernetes-Version."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["Node", "Ein Server (VM oder physisch), der Pods ausführt", "concept"]
+          - ["kubectl-get-nodes", "Alle Cluster-Nodes auflisten", "command"]
+      - q: "Was ist ein Pod?"
+        a: "Die kleinste deploybare Einheit in Kubernetes. Ein Pod enthält einen oder mehrere Container, die Netzwerk und Storage teilen."
+        labels: ["Kubernetes"]
+        rel:
+          - ["Pod", "Kleinste deploybare Einheit — 1+ Container teilen Netzwerk/Storage", "concept"]
+
+  - title: "Kubernetes-Architektur"
+    image: "images/section-03-architecture.svg"
+    image_caption: "Control Plane und Worker Nodes — die zwei Teile eines jeden Kubernetes-Clusters"
+    explanation: |
+      Jeder Kubernetes-Cluster hat zwei Arten von Komponenten:
+
+      **Control Plane** (das Gehirn):
+      - **API Server** — der zentrale Hub; alle Kommunikation läuft darüber
+      - **etcd** — die Datenbank, die den gesamten Cluster-Zustand speichert
+      - **Scheduler** — entscheidet, welche Node jeden Pod ausführt
+      - **Controller Manager** — überwacht den Cluster und stellt den Sollzustand sicher
+
+      **Worker Nodes** (die Muskeln):
+      - **kubelet** — Agent auf jeder Node, verwaltet Pods
+      - **kube-proxy** — kümmert sich um Networking und Load Balancing
+      - **Container-Runtime** — führt die eigentlichen Container aus (containerd, CRI-O)
+
+      ```
+      ┌─────────────────────────────────┐
+      │         Control Plane           │
+      │  API Server → etcd              │
+      │  Scheduler + Controller Manager │
+      └────────────────┬────────────────┘
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+      ┌────────┐  ┌────────┐  ┌────────┐
+      │ Node 1 │  │ Node 2 │  │ Node 3 │
+      │ Pods   │  │ Pods   │  │ Pods   │
+      └────────┘  └────────┘  └────────┘
+      ```
+
+      In k0rdent ist das **Management-Cluster** selbst ein Kubernetes-Cluster, der die Control Plane von k0rdent ausführt. Es provisioniert und verwaltet dann **Child-Cluster** — jedes davon ist ein vollständiger Kubernetes-Cluster.
+    examples:
+      - q: "kubectl get pods -n kube-system"
+        a: "Listet alle Control-Plane-Komponenten-Pods auf, die im kube-system-Namespace laufen."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["kube-system", "Namespace für die Kern-Kubernetes-Control-Plane-Komponenten", "namespace"]
+          - ["API Server", "Zentraler Hub für alle Kubernetes-API-Aufrufe", "component"]
+      - q: "Was speichert etcd?"
+        a: "Den gesamten Cluster-Zustand — alle Ressourcendefinitionen, Konfigurationen und den Soll- vs. Ist-Zustand aller Objekte."
+        labels: ["Kubernetes"]
+        rel:
+          - ["etcd", "Verteilter Key-Value-Store für den gesamten Kubernetes-Cluster-Zustand", "component"]
+      - q: "Was ist der Unterschied zwischen Control Plane und Worker Nodes?"
+        a: "Die Control Plane trifft Entscheidungen (API Server, Scheduler, etcd). Worker Nodes führen die eigentlichen Anwendungs-Pods aus."
+        labels: ["Kubernetes"]
+
+  - title: "Warum k0rdent über Kubernetes?"
+    image: "images/section-04-why-k0rdent.svg"
+    image_caption: "k0rdent verwaltet viele Kubernetes-Cluster — wie ein Flottenmanager für Cluster"
+    explanation: |
+      Kubernetes löst Container-Orchestrierung **innerhalb eines Clusters**. Aber moderne Organisationen betreiben **viele Cluster** — dev, staging, production, edge, pro Team, pro Region.
+
+      **Das Multi-Cluster-Problem:**
+      - Jeder Cluster muss separat provisioniert werden
+      - Zugangsdaten und Zugriff müssen für jeden Cluster verwaltet werden
+      - Services (Ingress, Monitoring, Backups) müssen auf jedem Cluster deployed werden
+      - Updates müssen auf alle Cluster ausgerollt werden
+      - Keine zentrale Übersicht, was wo läuft
+
+      **k0rdent löst das.** Es ist eine **Super-Control-Plane** — ein Kubernetes-Cluster, der andere Kubernetes-Cluster verwaltet:
+
+      | Problem | k0rdent-Lösung |
+      |---------|----------------|
+      | Cluster-Provisionierung | ClusterDeployment + ClusterTemplate |
+      | Zugangsdaten-Verwaltung | Credential-CRD (Engineers sehen keine Secrets) |
+      | Service-Deployment | KSM + ServiceTemplates auf allen Clustern |
+      | Updates und Lebenszyklus | Template-Chains mit gültigen Upgrade-Pfaden |
+      | Zentrale Sichtbarkeit | Management-Cluster als Single Pane of Glass |
+
+      **Analogie:** Wenn Kubernetes ein Hafenmeister für einen Hafen ist, ist k0rdent die **globale Schifffahrtsbehörde**, die alle Häfen weltweit verwaltet.
+    examples:
+      - q: "kubectl get clusterdeployments -A"
+        a: "Listet alle von k0rdent verwalteten Cluster-Deployments über alle Namespaces auf."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["ClusterDeployment", "CRD, das einen verwalteten Kubernetes-Cluster repräsentiert", "k0rdent concept"]
+          - ["k0rdent", "Super-Control-Plane zur Verwaltung vieler Kubernetes-Cluster", "platform"]
+      - q: "Was ist das Management-Cluster in k0rdent?"
+        a: "Der Kubernetes-Cluster, auf dem k0rdent selbst installiert ist. Er steuert alle anderen (Child-)Cluster von einem zentralen Ort."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["Management Cluster", "Der Cluster, auf dem k0rdent installiert ist und läuft", "k0rdent concept"]
+          - ["Child Cluster", "Ein von k0rdent provisionierter und verwalteter Cluster", "k0rdent concept"]
+      - q: "Was sind die drei Hauptkomponenten von k0rdent?"
+        a: "KCM (Cluster Manager für Provisionierung), KSM (State Manager für Services) und KOF (Observability & FinOps)."
+        labels: ["k0rdent"]
+        rel:
+          - ["KCM", "k0rdent Cluster Manager — Cluster-Lebenszyklus deployen und verwalten", "component"]
+          - ["KSM", "k0rdent State Manager — Services auf Clustern deployen und verwalten", "component"]
+          - ["KOF", "k0rdent Observability & FinOps — Metriken, Logs, Kosten", "component"]
+
+  - title: "🖥️ Wissens-Check"
+    image: "images/section-05-check.svg"
+    image_caption: "Teste dein Verständnis von Containern und Kubernetes"
+    explanation: "Teste dein Wissen, bevor du mit dem praktischen Setup beginnst!"
+    examples:
+      - q: "Welcher Befehl startet einen nginx-Container?"
+        type: input
+        a: "docker run nginx"
+        labels: ["Quiz"]
+      - q: "Was ist ein Pod in Kubernetes?"
+        type: select
+        options:
+          - text: "Die kleinste deploybare Einheit — 1 oder mehr Container teilen Netzwerk und Storage"
+            correct: true
+          - text: "Ein physischer Server in der Cloud"
+          - text: "Ein Storage-Volume, das an eine Node angehängt ist"
+          - text: "Eine Netzwerk-Policy für Container"
+        labels: ["Quiz"]
+      - q: "Welcher Befehl listet alle Nodes in einem Kubernetes-Cluster auf?"
+        type: input
+        a: "kubectl get nodes"
+        labels: ["Quiz"]
+      - q: "Was erledigt Kubernetes automatisch? (Mehrfachauswahl)"
+        type: multiple-choice
+        options:
+          - text: "Abgestürzte Container neu starten"
+            correct: true
+          - text: "Traffic auf Container verteilen"
+            correct: true
+          - text: "Deinen Anwendungscode schreiben"
+          - text: "Pods auf verfügbaren Nodes einplanen"
+            correct: true
+        labels: ["Quiz"]
+      - q: "Warum wird k0rdent benötigt, wenn Kubernetes bereits existiert?"
+        type: select
+        options:
+          - text: "Kubernetes kann ohne k0rdent keine Container ausführen"
+          - text: "k0rdent verwaltet viele Kubernetes-Cluster von einer einzigen Control Plane"
+            correct: true
+          - text: "k0rdent ersetzt Kubernetes vollständig"
+          - text: "k0rdent wird nur für Docker-Container benötigt"
+        labels: ["Quiz"]

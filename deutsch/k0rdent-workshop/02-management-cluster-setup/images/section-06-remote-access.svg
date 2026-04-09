@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160">
+  <rect width="640" height="160" fill="#0d1117" rx="10" stroke="#58a6ff" stroke-width="1.5" stroke-opacity="0.4"/>
+  <rect x="1" y="1" width="638" height="28" rx="10" fill="#161b22"/>
+  <rect x="1" y="20" width="638" height="9" fill="#161b22"/>
+  <circle cx="18" cy="14" r="5" fill="#f85149" opacity="0.8"/>
+  <circle cx="34" cy="14" r="5" fill="#f0883e" opacity="0.8"/>
+  <circle cx="50" cy="14" r="5" fill="#3fb950" opacity="0.8"/>
+  <text x="320" y="18" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">Remote-Zugriff einrichten</text>
+  <text x="30" y="52" font-family="monospace" font-size="10" fill="#8b949e"># Auf dem Server:</text>
+  <text x="30" y="68" font-family="monospace" font-size="10" fill="#3fb950">$ sudo cat /var/lib/k0s/pki/admin.conf  # kubeconfig anzeigen</text>
+  <text x="30" y="88" font-family="monospace" font-size="10" fill="#8b949e"># Auf deinem lokalen Gerät:</text>
+  <text x="30" y="104" font-family="monospace" font-size="10" fill="#3fb950">$ sed -i 's/localhost/SERVER_IP/g' ~/.kube/k0rdent-config</text>
+  <text x="30" y="120" font-family="monospace" font-size="10" fill="#3fb950">$ export KUBECONFIG=~/.kube/k0rdent-config</text>
+  <text x="30" y="140" font-family="monospace" font-size="10" fill="#58a6ff">Port 6443 öffnen (Hetzner Firewall)</text>
+</svg>

@@ -1,0 +1,241 @@
+version: 2
+number: 6
+title: "Zugangsdaten & Zugriff"
+description: "Lerne, wie k0rdent Provider-Zugangsdaten sicher verwaltet und den Zugriff via RBAC kontrolliert."
+image: "images/lesson-header.svg"
+image_caption: "Drei-Schicht-Zugangsdaten-Modell: Secret → ClusterIdentity → Credential"
+sections:
+  - title: "Das Zugangsdaten-Modell"
+    image: "images/section-01-credential-model.svg"
+    image_caption: "Secret → ClusterIdentity → Credential: Engineers sehen nie die eigentlichen Zugangsdaten"
+    explanation: |
+      k0rdent abstrahiert das Zugangsdaten-Management durch ein **Drei-Schicht-Modell**:
+
+      1. **Secret** — enthält die eigentlichen Provider-Zugangsdaten (Access Keys, SSH-Keys, etc.)
+      2. **ClusterIdentity** — ein Kubernetes-Objekt, das das Secret referenziert (provider-spezifisch)
+      3. **Credential** — ein k0rdent-CRD, das die ClusterIdentity referenziert und Engineern verfügbar macht
+
+      Diese Trennung stellt sicher, dass Platform Engineers Cluster deployen können, indem sie einen `Credential`-Namen referenzieren — **ohne die eigentlichen Zugangsdaten jemals zu sehen**.
+    examples:
+      - q: "Warum verwendet k0rdent ein Drei-Schicht-Zugangsdaten-Modell?"
+        a: "Um das Zugangsdaten-Management vom Cluster-Deployment zu trennen — Engineers referenzieren Credential-Namen ohne Zugang zu den eigentlichen Secrets."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["Secret", "Kubernetes-Objekt, das die eigentlichen Provider-Zugangsdaten enthält"]
+          - ["ClusterIdentity", "Provider-spezifisches Objekt, das ein Secret referenziert"]
+          - ["Credential", "k0rdent-CRD, das Zugangsdaten für das Cluster-Deployment verfügbar macht"]
+
+      - type: select
+        q: "Wer sollte die Secret- und ClusterIdentity-Objekte erstellen?"
+        options:
+          - text: "Jeder Platform Engineer"
+          - text: "Der Platform Lead mit Zugangsdaten-Zugang"
+            correct: true
+          - text: "k0rdent erstellt sie automatisch"
+          - text: "Die Cluster-Nutzer"
+        labels: ["Quiz"]
+
+  - title: "Der Vier-Schritt-Zugangsdaten-Prozess"
+    image: "images/section-02-four-step.svg"
+    image_caption: "Vier Schritte von der Secret-Erstellung bis zur ClusterDeployment-Referenz"
+    explanation: |
+      **Schritt 1: Secret + ClusterIdentity erstellen**
+      Der Platform Lead erstellt das provider-spezifische Secret (mit den eigentlichen Zugangsdaten) und eine ClusterIdentity, die es referenziert.
+
+      **Schritt 2: Credential-Objekt erstellen**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: my-aws-cred
+        namespace: kcm-system
+      spec:
+        description: "AWS-Zugangsdaten für Dev-Cluster"
+        identityRef:
+          apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+          kind: AWSClusterStaticIdentity
+          name: aws-cluster-identity
+      ```
+
+      **Schritt 3: Im ClusterDeployment referenzieren**
+      Engineers referenzieren nur den Credential-Namen:
+      ```yaml
+      spec:
+        credential: my-aws-cred
+      ```
+
+      **Schritt 4: Optionale Zugangsdaten-Weitergabe**
+      Zugangsdaten können bei Bedarf an Child-Cluster-Nodes weitergegeben werden.
+    examples:
+      - q: "Was enthält ein Credential-Objekt?"
+        a: "Eine Referenz (identityRef) auf ein ClusterIdentity-Objekt, plus eine optionale Beschreibung. Es enthält KEINE eigentlichen Zugangsdaten."
+        labels: ["Security", "k0rdent"]
+
+      - type: input
+        q: "Wie gibst du in einem ClusterDeployment an, welche Zugangsdaten verwendet werden sollen?"
+        a:
+          - "spec.credential"
+          - "credential"
+        labels: ["Quiz"]
+
+  - title: "SSH-Zugangsdaten für Hetzner (Remote-Provider)"
+    image: "images/section-03-ssh.svg"
+    image_caption: "SSH-Key-Secret und Credential für Hetzner-Remote-Provider erstellen"
+    explanation: |
+      Für unseren Hetzner-Workshop verwenden wir SSH-Key-Zugangsdaten. Hier ist das Setup:
+
+      **Das SSH-Key-Secret erstellen:**
+      ```bash
+      # Variablen setzen
+      KEY_PATH=~/.ssh/id_ed25519
+      PRIVATE_SSH_KEY_B64=$(cat $KEY_PATH | base64 -w 0)
+      ```
+
+      ```yaml
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: remote-ssh-key
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+      type: Opaque
+      data:
+        value: <base64-kodierter-privater-key>
+      ```
+
+      **Das Credential erstellen:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: remote-cred
+        namespace: kcm-system
+      spec:
+        identityRef:
+          apiVersion: v1
+          kind: Secret
+          name: remote-ssh-key
+          namespace: kcm-system
+      ```
+
+      Beim Remote/SSH-Provider referenziert das Credential direkt das Secret (kein intermediäres ClusterIdentity erforderlich).
+    examples:
+      - q: "Wie wird der SSH-Private-Key im Secret gespeichert?"
+        a: "Base64-kodiert im 'value'-Feld eines Opaque-Secrets."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["remote-ssh-key", "Secret mit dem base64-kodierten SSH-Private-Key"]
+          - ["remote-cred", "Credential-Objekt für SSH-basierte Remote-Deployments"]
+
+      - type: select
+        q: "Benötigt das Credential für den Remote/SSH-Provider eine ClusterIdentity?"
+        options:
+          - text: "Ja, immer"
+          - text: "Nein — es referenziert direkt das SSH-Key-Secret"
+            correct: true
+          - text: "Nur für Produktions-Cluster"
+        labels: ["Quiz"]
+
+  - title: "Bestehende Zugangsdaten prüfen"
+    image: "images/section-04-check.svg"
+    image_caption: "kubectl get credentials listet alle Namespaces auf"
+    explanation: |
+      Bevor du neue Zugangsdaten erstellst, prüfe, was bereits verfügbar ist:
+
+      ```bash
+      # Alle Zugangsdaten über alle Namespaces auflisten
+      kubectl get credentials --all-namespaces
+
+      # Ein bestimmtes Credential beschreiben
+      kubectl describe credential remote-cred -n kcm-system
+      ```
+
+      Zugangsdaten sind namespace-scoped. Der `kcm-system`-Namespace ist, wo systemweite Zugangsdaten typischerweise leben.
+    examples:
+      - q: "Wie listest du alle Zugangsdaten im Cluster auf?"
+        a: "kubectl get credentials --all-namespaces"
+        labels: ["Security", "CLI"]
+
+  - title: "RBAC in k0rdent"
+    image: "images/section-05-rbac.svg"
+    image_caption: "AccessManagement-CRD steuert Template-Zugang pro Namespace"
+    explanation: |
+      k0rdent bietet **Role Based Access Control** nach dem Prinzip der minimalen Rechte:
+
+      | Konzept | Zweck |
+      |---------|-------|
+      | **Roles** | Definiert, welche Aktionen auf welchen Ressourcen ausgeführt werden können |
+      | **AccessManagement** | CRD, das Zugriffsregeln und Ziel-Namespaces definiert |
+      | **AccessRules** | Gibt an, welche Templates und Ressourcen in welchen Namespaces verfügbar sind |
+      | **TargetNamespaces** | Definiert, wo Ressourcen verteilt werden |
+
+      Das `AccessManagement`-Objekt steuert, welche `ClusterTemplateChain`- und `ServiceTemplateChain`-Objekte in jedem Namespace verfügbar sind und kontrolliert so effektiv, welche Cluster und Services jedes Team deployen kann.
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: AccessManagement
+      metadata:
+        name: access-config
+      spec:
+        accessRules:
+          - clusterTemplateChains:
+              - name: aws-standalone-cp
+            serviceTemplateChains:
+              - name: ingress-nginx
+            targetNamespaces:
+              selector:
+                matchLabels:
+                  team: dev
+      ```
+    examples:
+      - q: "Was steuert AccessManagement in k0rdent?"
+        a: "Es definiert, welche Templates (via TemplateChains) in welchen Namespaces verfügbar sind und kontrolliert so, was jedes Team deployen kann."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["AccessManagement", "CRD zur Definition von Zugriffsregeln und Ressourcenverteilung"]
+          - ["AccessRules", "Gibt an, welche Templates in welchen Namespaces verfügbar sind"]
+          - ["TargetNamespaces", "Definiert Namespaces, in denen Ressourcen verteilt werden"]
+
+      - type: select
+        q: "Wie beschränkst du ein Team auf die Verwendung bestimmter ClusterTemplates?"
+        options:
+          - text: "Lösche die Templates, die sie nicht verwenden sollen"
+          - text: "Verwende AccessManagement mit AccessRules, die auf ihren Namespace abzielen"
+            correct: true
+          - text: "Setze Dateisystem-Berechtigungen auf die Template-Dateien"
+          - text: "Verwende Kubernetes-NetworkPolicies"
+        labels: ["Quiz"]
+
+  - title: "🖥️ Wissens-Check"
+    image: "images/section-06-check.svg"
+    image_caption: "Teste dein Wissen über k0rdent-Zugangsdaten und Zugriffsmanagement"
+    explanation: "Teste dein Verständnis, wie Zugangsdaten und Zugriff in k0rdent funktionieren!"
+    examples:
+      - q: "Wo wird der SSH-Private-Key gespeichert, wenn ein Credential für k0rdent erstellt wird?"
+        type: input
+        a:
+          - "In einem Kubernetes-Secret"
+          - "Ein Kubernetes-Secret"
+          - "In einem Secret"
+        labels: ["Quiz"]
+      - q: "Wer sollte direkten Zugang zu Cloud-Provider-Zugangsdaten haben?"
+        type: select
+        options:
+          - text: "Alle Platform Engineers, die Cluster deployen"
+          - text: "Nur der Platform Lead, der Zugangsdaten erstellt und verwaltet"
+            correct: true
+          - text: "Alle Nutzer des Management-Clusters"
+          - text: "Niemand — Zugangsdaten werden automatisch generiert"
+        labels: ["Quiz"]
+      - q: "Was steuert AccessManagement? (Mehrfachauswahl)"
+        type: multiple-choice
+        options:
+          - text: "Welche ClusterTemplateChains pro Namespace verfügbar sind"
+            correct: true
+          - text: "Welche ServiceTemplateChains pro Namespace verfügbar sind"
+            correct: true
+          - text: "Welche Nutzer per SSH auf Worker-Nodes zugreifen können"
+          - text: "Welche Namespaces Template-Zugang erhalten"
+            correct: true
+        labels: ["Quiz"]

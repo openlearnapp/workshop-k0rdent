@@ -1,0 +1,238 @@
+version: 2
+number: 4
+title: "Installation verifizieren"
+description: "Bestätige, dass k0rdent vollständig funktionsfähig ist, indem du Pods, Templates und das Management-Objekt überprüfst."
+image: "images/lesson-header.svg"
+image_caption: "kubectl get pods -n kcm-system zeigt ~26 laufende Pods"
+sections:
+  - title: "KCM-Pods prüfen"
+    image: "images/section-01-kcm-pods.svg"
+    image_caption: "~26 Pods laufen im kcm-system-Namespace einschließlich CAPI- und Provider-Controllern"
+    explanation: |
+      5-10 Minuten nach der Installation warten, dann überprüfen, ob alle Pods im `kcm-system`-Namespace laufen:
+
+      ```bash
+      kubectl get pods -n kcm-system
+      ```
+
+      Du solltest ungefähr **26 Pods** laufen sehen, einschließlich:
+
+      | Pod | Zweck |
+      |-----|-------|
+      | `azureserviceoperator-*` | Azure-Provider |
+      | `capa-*` | AWS-Provider (CAPA) |
+      | `capi-*` | Core Cluster API |
+      | `capg-*` | GCP-Provider |
+      | `capo-*` | OpenStack-Provider |
+      | `capv-*` | vSphere-Provider |
+      | `capz-*` | Azure-Provider (CAPZ) |
+      | `helm-controller-*` | Flux Helm-Controller |
+      | `kcm-cert-manager-*` | Zertifikatsverwaltung |
+      | `kcm-controller-manager-*` | Haupt-KCM-Controller |
+      | `k0smotron-*` | Hosted Control Planes |
+      | `source-controller-*` | Flux Source-Controller |
+
+      **Fehlerbehebung:** Wenn Pods Neustarts oder `CrashLoopBackOff` zeigen, nutze `kubectl describe pod <name> -n kcm-system` zur Untersuchung. Oft löst längeres Warten Timing-Probleme.
+    examples:
+      - q: "Wie viele Pods sollten im kcm-system laufen?"
+        a: "Ungefähr 26 Pods, einschließlich CAPI-Controller, Provider-Controller, Flux-Controller und cert-manager."
+        labels: ["k0rdent", "Kubernetes"]
+        rel:
+          - ["kcm-system", "Namespace, in dem alle k0rdent-Control-Plane-Komponenten laufen"]
+          - ["CAPI controller", "Core Cluster API-Controller für Cluster-Lifecycle"]
+          - ["Flux controllers", "GitOps-Controller für Helm und Source-Management"]
+
+      - type: input
+        q: "Welcher Befehl listet alle Pods im kcm-system-Namespace auf?"
+        a:
+          - "kubectl get pods -n kcm-system"
+        labels: ["Quiz"]
+
+  - title: "KSM-Pods prüfen (ProjectSveltos)"
+    image: "images/section-02-ksm-pods.svg"
+    image_caption: "~10 Pods laufen im projectsveltos-Namespace"
+    explanation: |
+      k0rdents State Manager nutzt ProjectSveltos. Seine Pods prüfen:
+
+      ```bash
+      kubectl get pods -n projectsveltos
+      ```
+
+      Du solltest ungefähr **10 Pods** laufen sehen:
+
+      - `access-manager` — verwaltet Zugriffskontrollen
+      - `addon-controller` — deployed Services auf Child-Clustern
+      - `classifier-manager` — klassifiziert Cluster
+      - `event-manager` — behandelt Events
+      - `healthcheck-manager` — überwacht den Gesundheitszustand
+      - `shard-controller` — verwaltet Sharding
+      - `sc-manager` — Service-Catalog-Manager
+      - `conversion-webhook` — API-Versionskonvertierungen
+      - `drift-detection-manager` — erkennt Konfigurations-Drift
+      - `sveltos-agent-manager` — Agent-Management
+    examples:
+      - q: "In welchem Namespace läuft ProjectSveltos?"
+        a: "projectsveltos"
+        labels: ["k0rdent", "Services"]
+        rel:
+          - ["projectsveltos", "Namespace für die KSM/Sveltos-Service-Management-Pods"]
+          - ["addon-controller", "Sveltos-Komponente, die Services auf Child-Clustern deployed"]
+          - ["drift-detection-manager", "Erkennt Konfigurations-Drift in verwalteten Clustern"]
+
+      - type: select
+        q: "Welche Komponente deployed Services auf Child-Clustern?"
+        options:
+          - text: "classifier-manager"
+          - text: "addon-controller"
+            correct: true
+          - text: "shard-controller"
+          - text: "access-manager"
+        labels: ["Quiz"]
+
+  - title: "Provider-Templates verifizieren"
+    image: "images/section-03-provider-templates.svg"
+    image_caption: "Alle ProviderTemplates zeigen VALID: true"
+    explanation: |
+      ProviderTemplates definieren, welche Infrastruktur-Provider verfügbar sind. Prüfe, dass alle gültig sind:
+
+      ```bash
+      kubectl get providertemplate -n kcm-system
+      ```
+
+      Alle Templates sollten `VALID: true` zeigen. Du siehst Templates für:
+      - `cluster-api` — Core CAPI
+      - `cluster-api-provider-aws` — AWS
+      - `cluster-api-provider-azure` — Azure
+      - `cluster-api-provider-gcp` — GCP
+      - `cluster-api-provider-openstack` — OpenStack
+      - `cluster-api-provider-vsphere` — vSphere
+      - `k0smotron` — Hosted Control Planes
+      - `kcm` — k0rdent selbst
+      - `projectsveltos` — Service-Management
+    examples:
+      - q: "Was bedeutet VALID: true bei einem ProviderTemplate?"
+        a: "Das Template wurde erfolgreich validiert — sein Helm-Chart ist erreichbar, Provider sind erkannt und es ist bereit zur Verwendung."
+        labels: ["k0rdent", "Templates"]
+        rel:
+          - ["ProviderTemplate", "CRD, das CAPI-Provider für Infrastruktur-, Bootstrap- und Control-Plane-Operationen bereitstellt"]
+
+      - type: input
+        q: "Welcher Befehl listet alle Provider-Templates auf?"
+        a:
+          - "kubectl get providertemplate -n kcm-system"
+        labels: ["Quiz"]
+
+  - title: "Cluster-Templates verifizieren"
+    image: "images/section-04-cluster-templates.svg"
+    image_caption: "ClusterTemplates für alle Provider zeigen VALID: true"
+    explanation: |
+      ClusterTemplates sind Blueprints zum Erstellen von Clustern. Die vorinstallierten prüfen:
+
+      ```bash
+      kubectl get clustertemplate -n kcm-system
+      ```
+
+      Du siehst Templates für verschiedene Provider und Topologien:
+
+      | Template-Muster | Beschreibung |
+      |----------------|--------------|
+      | `aws-standalone-cp-*` | AWS-Standalone-Cluster |
+      | `aws-eks-*` | AWS-EKS-managed-Cluster |
+      | `aws-hosted-cp-*` | AWS Hosted Control Plane |
+      | `azure-standalone-cp-*` | Azure-Standalone-Cluster |
+      | `azure-aks-*` | Azure-AKS-managed-Cluster |
+      | `gcp-standalone-cp-*` | GCP-Standalone-Cluster |
+      | `remote-cluster-*` | Remote/SSH-Cluster |
+
+      Alle sollten `VALID: true` zeigen.
+    examples:
+      - q: "Was ist ein ClusterTemplate?"
+        a: "Ein wiederverwendbarer, unveränderlicher Blueprint, der die Konfiguration, Komponenten und Eigenschaften eines Kubernetes-Clusters definiert."
+        labels: ["k0rdent", "Templates"]
+        rel:
+          - ["ClusterTemplate", "Unveränderlicher Blueprint zur Definition von Cluster-Konfigurationen"]
+          - ["standalone", "Cluster-Topologie, bei der die Control Plane auf dedizierten Nodes läuft"]
+          - ["hosted", "Cluster-Topologie, bei der die Control Plane als Pods im Management-Cluster läuft"]
+
+      - type: multiple-choice
+        q: "Welche der folgenden sind gültige ClusterTemplate-Typen? (Mehrfachauswahl)"
+        options:
+          - text: "aws-standalone-cp"
+            correct: true
+          - text: "azure-hosted-cp"
+            correct: true
+          - text: "remote-cluster"
+            correct: true
+          - text: "docker-local-cp"
+        labels: ["Quiz"]
+
+  - title: "Das Management-Objekt verifizieren"
+    image: "images/section-05-management.svg"
+    image_caption: "Management-Objekt zeigt READY: True — k0rdent vollständig funktionsfähig"
+    explanation: |
+      Die abschließende Prüfung — verifiziere, dass das Management-Objekt bereit ist:
+
+      ```bash
+      kubectl get management -n kcm-system
+      ```
+
+      Erwartete Ausgabe:
+      ```
+      NAME   READY   RELEASE
+      kcm    True    kcm-1-8-0
+      ```
+
+      `READY: True` bestätigt, dass k0rdent vollständig betriebsbereit ist. Falls es `False` zeigt, noch einige Minuten warten und Pod-Logs auf Fehler prüfen.
+
+      Für mehr Details:
+      ```bash
+      kubectl get management kcm -n kcm-system -o yaml
+      ```
+
+      Dies zeigt den vollständigen Status einschließlich aller verwalteten Komponenten und ihrer Versionen.
+    examples:
+      - q: "Was repräsentiert das Management-Objekt?"
+        a: "Die zentrale management-bezogene Konfiguration in k0rdent. READY: True bestätigt, dass alles betriebsbereit ist."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["Management", "CRD, das die gesamte k0rdent-Management-Konfiguration und den Status repräsentiert"]
+
+      - type: select
+        q: "Dein Management-Objekt zeigt READY: False. Was solltest du zuerst tun?"
+        options:
+          - text: "k0rdent sofort neu installieren"
+          - text: "Noch einige Minuten warten und Pod-Logs prüfen"
+            correct: true
+          - text: "Das Management-Objekt löschen"
+          - text: "Den Server neu starten"
+        labels: ["Quiz"]
+
+  - title: "🖥️ Wissens-Check"
+    image: "images/section-06-check.svg"
+    image_caption: "Verifiziere dein Verständnis der k0rdent-Post-Installation-Prüfungen"
+    explanation: "Teste dein Wissen über die Verifikation einer k0rdent-Installation!"
+    examples:
+      - q: "Welcher Befehl verifiziert, dass alle k0rdent-Komponenten laufen?"
+        type: input
+        a:
+          - "kubectl get pods -n kcm-system"
+        labels: ["Quiz"]
+      - q: "Was bedeutet VALID: true auf einem ClusterTemplate?"
+        type: select
+        options:
+          - text: "Der Cluster wurde erfolgreich deployed"
+          - text: "Das Helm-Chart des Templates ist erreichbar und Provider sind erkannt — es ist bereit zur Verwendung"
+            correct: true
+          - text: "Das Template wurde mindestens einmal verwendet"
+          - text: "Das Template ist aktuell für das Deployment ausgewählt"
+        labels: ["Quiz"]
+      - q: "Welche Namespaces enthalten k0rdent-Control-Plane-Komponenten? (Mehrfachauswahl)"
+        type: multiple-choice
+        options:
+          - text: "kcm-system"
+            correct: true
+          - text: "projectsveltos"
+            correct: true
+          - text: "kube-system"
+          - text: "default"
+        labels: ["Quiz"]

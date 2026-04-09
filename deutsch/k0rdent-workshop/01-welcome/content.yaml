@@ -1,0 +1,225 @@
+version: 2
+number: 2
+title: "Willkommen bei k0rdent"
+description: "Verstehe, was k0rdent ist, warum es existiert und seine Architektur für die Verwaltung von Kubernetes in großem Maßstab."
+image: "images/lesson-header.svg"
+image_caption: "k0rdent Management-Cluster steuert Child-Cluster über verschiedene Provider"
+sections:
+  - title: "Was ist k0rdent?"
+    image: "images/section-01-what-is-k0rdent.svg"
+    image_caption: "k0rdent als Super-Control-Plane mit KCM-, KSM- und KOF-Komponenten"
+    explanation: |
+      **k0rdent** ist eine Kubernetes-Lifecycle-Management-Plattform — eine *Super-Control-Plane*, die entwickelt wurde, um Kubernetes-Cluster im großen Maßstab durch zentralisierte, Template-basierte Provisionierung und Lifecycle-Management zu verwalten.
+
+      Es wurde auf drei wesentlichen Prämissen aufgebaut:
+
+      - Kubernetes und sein Ökosystem sind **ausgereift und inhärent stabil**
+      - Großangelegte Kubernetes-Adoption ermöglicht Deployment **überall**
+      - Community-Standards und Open Source **reduzieren das Adoptionsrisiko**
+
+      k0rdent integriert bewährte Open-Source-Tools (Cluster API, Flux, Sveltos, k0smotron, Velero) in ein kohärentes Lifecycle-Management-Framework — damit Platform Engineers sie nicht manuell zusammenstückeln müssen.
+    examples:
+      - q: "Was ist k0rdent?"
+        a: "Eine Kubernetes-Super-Control-Plane für zentralisiertes, Template-basiertes Cluster-Lifecycle-Management im großen Maßstab."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["k0rdent", "Kubernetes-Lifecycle-Management-Plattform (Super-Control-Plane)"]
+          - ["KCM", "k0rdent Cluster Manager — Deployment und Lifecycle-Management von Clustern"]
+          - ["KSM", "k0rdent State Manager — Installation und Lifecycle-Management von Services"]
+          - ["KOF", "k0rdent Observability & FinOps — Monitoring, Events und Log-Management"]
+
+      - q: "Welches Problem löst k0rdent?"
+        a: "Es bietet eine einheitliche Plattform zum Provisionieren, Aktualisieren und Verwalten vieler Kubernetes-Cluster über mehrere Clouds und Infrastrukturen hinweg."
+        labels: ["k0rdent", "Basics"]
+
+      - type: select
+        q: "k0rdent lässt sich am besten beschreiben als:"
+        options:
+          - text: "Eine Kubernetes-Distribution wie k0s oder k3s"
+          - text: "Eine Super-Control-Plane zur Verwaltung von Kubernetes-Clustern im großen Maßstab"
+            correct: true
+          - text: "Ein CI/CD-Pipeline-Tool"
+          - text: "Eine Container-Runtime"
+        labels: ["Quiz"]
+
+  - title: "Warum k0rdent?"
+    image: "images/section-02-why.svg"
+    image_caption: "Die vier Herausforderungen, die k0rdent adressiert: Komplexität, Platform Engineering, Distribution, Open Source"
+    explanation: |
+      k0rdent wurde entwickelt, um vier wesentliche Herausforderungen anzugehen:
+
+      1. **Anwendungskomplexität** — Moderne Workloads (KI/ML, Microservices) fordern schnelles Deployment und spezialisierte Infrastruktur
+      2. **Platform Engineering** — Organisationen brauchen Internal Developer Platforms (IDPs), um Komplexität zu managen und die Entwicklerproduktivität zu steigern
+      3. **Verteilte Infrastruktur** — Verteilte Deployments sind die neue Normalität; Betreiber müssen Sicherheit, Compliance, Kosten und Resilienz verwalten
+      4. **Open Source** — Das Kubernetes-Ökosystem nutzen bietet Anbieterunabhängigkeit und bewährte Tools
+    examples:
+      - q: "Was sind die vier Gründe für die Existenz von k0rdent?"
+        a: "Anwendungskomplexität, Platform-Engineering-Bedarf, verteiltes Infrastruktur-Management und Nutzung des Open-Source-Ökosystems."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["IDP", "Internal Developer Platform — Self-Service-Fähigkeiten für Entwickler"]
+          - ["Platform Engineering", "Praxis des Aufbaus und der Wartung interner Entwicklerplattformen"]
+
+      - type: multiple-choice
+        q: "Welche Herausforderungen adressiert k0rdent? (Mehrfachauswahl)"
+        options:
+          - text: "Wachsende Anwendungs- und Workload-Komplexität"
+            correct: true
+          - text: "Bedarf an Internal Developer Platforms"
+            correct: true
+          - text: "Ersetzen von Container-Runtimes"
+          - text: "Verwaltung verteilter Infrastruktur im großen Maßstab"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "Architektur-Überblick"
+    image: "images/section-03-architecture.svg"
+    image_caption: "k0rdent Drei-Komponenten-Architektur: KCM, KSM, KOF"
+    explanation: |
+      k0rdent hat drei Hauptkomponenten:
+
+      **KCM (k0rdent Cluster Manager)**
+      - Kapselt CAPI (Cluster API)-Fähigkeiten
+      - Orchestriert Cluster-Provisionierung über Provider hinweg
+      - Integriert k0smotron für k0s-Bootstrap und Hosted Control Planes
+
+      **KSM (k0rdent State Manager)**
+      - Lifecycle-Management für Services und Anwendungen auf Child-Clustern
+      - Nutzt ProjectSveltos als eingebaute CD-Lösung
+      - Deployen, skalieren, aktualisieren, upgraden und beenden von Services
+
+      **KOF (k0rdent Observability & FinOps)**
+      - Enterprise-Observability via OpenTelemetry
+      - Zentralisiertes Metriken-, Logging- und Kostenmanagement
+
+      Die Architektur folgt einem **Management-Cluster → Child-Cluster**-Modell. Das Management-Cluster hostet alle Controller und orchestriert alles.
+    examples:
+      - q: "Was sind die drei Hauptkomponenten von k0rdent?"
+        a: "KCM (Cluster Manager), KSM (State Manager) und KOF (Observability & FinOps)."
+        labels: ["k0rdent", "Basics"]
+
+      - q: "Was ist ein Management-Cluster?"
+        a: "Der Kubernetes-Cluster, auf dem k0rdent installiert ist und von dem aus alle anderen verwalteten Cluster gesteuert werden."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["Management Cluster", "Der Cluster, auf dem k0rdent installiert ist und läuft"]
+          - ["Child Cluster", "Ein vom Management-Cluster provisionierter und verwalteter Cluster"]
+          - ["CAPI", "Cluster API — deklaratives Kubernetes-Cluster-Lifecycle-Management"]
+          - ["k0smotron", "Tool zum Ausführen von k0s-Control-Planes als Pods im Management-Cluster"]
+          - ["ProjectSveltos", "Open-Source-Kubernetes-Addon-Controller, der von KSM genutzt wird"]
+
+      - type: select
+        q: "Welche Komponente ist für das Deployen von Services auf Child-Clustern zuständig?"
+        options:
+          - text: "KCM (Cluster Manager)"
+          - text: "KSM (State Manager)"
+            correct: true
+          - text: "KOF (Observability & FinOps)"
+          - text: "CAPI direkt"
+        labels: ["Quiz"]
+
+  - title: "Organisatorische Rollen"
+    image: "images/section-04-roles.svg"
+    image_caption: "Drei organisatorische Rollen: Platform Architect, Lead und Engineer"
+    explanation: |
+      k0rdent definiert drei organisatorische Rollen:
+
+      | Rolle | Verantwortlichkeit |
+      |-------|-------------------|
+      | **Platform Architect** | Entwirft abstrakte Plattformen, erstellt wiederverwendbare Templates |
+      | **Platform Lead** | Passt Templates an spezifische Clouds an, verwaltet Zugriffskontrollen |
+      | **Platform Engineer** | Tägliches Management, nutzt autorisierte Templates, passt Services an |
+
+      Diese Trennung stellt sicher, dass Zugangsdaten und komplexe Konfigurationen von Leads verwaltet werden, während Engineers Cluster deployen können, ohne direkten Zugang zu Zugangsdaten zu haben.
+    examples:
+      - q: "Wer erstellt wiederverwendbare Templates in k0rdent?"
+        a: "Der Platform Architect entwirft abstrakte Plattformen und erstellt wiederverwendbare Templates."
+        labels: ["k0rdent", "Security"]
+        rel:
+          - ["Platform Architect", "Entwirft Plattformen und erstellt wiederverwendbare Templates"]
+          - ["Platform Lead", "Passt Templates an, verwaltet Zugriffskontrollen und Zugangsdaten"]
+          - ["Platform Engineer", "Tägliches Cluster- und Service-Management"]
+
+      - type: select
+        q: "Wer sollte direkten Zugriff auf Cloud-Provider-Zugangsdaten haben?"
+        options:
+          - text: "Alle Platform Engineers"
+          - text: "Nur der Platform Lead"
+            correct: true
+          - text: "Nur der Platform Architect"
+          - text: "Niemand — Zugangsdaten werden automatisch generiert"
+        labels: ["Quiz"]
+
+  - title: "Unterstützte Provider"
+    image: "images/section-05-providers.svg"
+    image_caption: "k0rdent unterstützt AWS, Azure, GCP, vSphere, OpenStack, KubeVirt und Remote/SSH"
+    explanation: |
+      k0rdent unterstützt mehrere Infrastruktur-Provider out of the box:
+
+      - **AWS** (CAPA) — Standalone- und EKS-Cluster
+      - **Azure** (CAPZ) — Standalone- und AKS-Cluster
+      - **GCP** (CAPG) — Standalone- und GKE-Cluster
+      - **vSphere** (CAPV) — VMware-Umgebungen
+      - **OpenStack** (CAPO) — Private Cloud
+      - **KubeVirt** — Kubernetes-native Virtualisierung
+      - **Remote/SSH** — Bare Metal oder jede Linux-Maschine mit SSH-Zugang
+
+      In diesem Workshop konzentrieren wir uns auf **Hetzner** mit dem **Remote/SSH**-Provider, da Hetzner günstige Bare-Metal- und Cloud-Server bietet, die ideal für ein Dev-Setup sind.
+    examples:
+      - q: "Welchen Provider nutzen wir für Hetzner in k0rdent?"
+        a: "Den Remote/SSH-Provider, der k0s-Cluster via SSH auf jede Linux-Maschine deployed."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["CAPA", "Cluster API Provider für AWS"]
+          - ["CAPZ", "Cluster API Provider für Azure"]
+          - ["CAPG", "Cluster API Provider für GCP"]
+          - ["CAPV", "Cluster API Provider für vSphere"]
+          - ["CAPO", "Cluster API Provider für OpenStack"]
+          - ["Remote/SSH", "Provider für das Deployen auf Bare Metal oder jede Linux-Maschine via SSH"]
+
+      - type: multiple-choice
+        q: "Welche Provider unterstützt k0rdent? (Mehrfachauswahl)"
+        options:
+          - text: "AWS"
+            correct: true
+          - text: "Azure"
+            correct: true
+          - text: "DigitalOcean nativ"
+          - text: "Remote/SSH"
+            correct: true
+          - text: "OpenStack"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "🖥️ Wissens-Check"
+    image: "images/section-06-check.svg"
+    image_caption: "Teste dein k0rdent-Konzept- und Architekturwissen"
+    explanation: "Teste dein Verständnis von k0rdent, bevor du deinen ersten Cluster aufsetzt!"
+    examples:
+      - q: "Was sind die drei Hauptkomponenten von k0rdent?"
+        type: input
+        a:
+          - "KCM, KSM, KOF"
+          - "KCM KSM KOF"
+          - "k0rdent Cluster Manager, State Manager, Observability"
+        labels: ["Quiz"]
+      - q: "k0rdent lässt sich am besten beschreiben als:"
+        type: select
+        options:
+          - text: "Eine Kubernetes-Distribution wie k3s oder k0s"
+          - text: "Eine Super-Control-Plane zur Verwaltung vieler Kubernetes-Cluster im großen Maßstab"
+            correct: true
+          - text: "Eine Container-Runtime wie Docker"
+          - text: "Ein CI/CD-Pipeline-Tool"
+        labels: ["Quiz"]
+      - q: "Welche dieser organisatorischen Rollen gibt es in k0rdent? (Mehrfachauswahl)"
+        type: multiple-choice
+        options:
+          - text: "Platform Architect — erstellt wiederverwendbare Templates"
+            correct: true
+          - text: "Platform Lead — verwaltet Zugangsdaten und Zugriff"
+            correct: true
+          - text: "Platform Engineer — deployed Cluster mit autorisierten Templates"
+            correct: true
+          - text: "Cluster Root — voller Admin aller Child-Cluster"
+        labels: ["Quiz"]

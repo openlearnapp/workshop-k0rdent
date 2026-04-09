@@ -1,0 +1,260 @@
+version: 2
+number: 3
+title: "Das Management-Cluster aufsetzen"
+description: "Einen Hetzner-Server provisionieren, k0s, kubectl, Helm installieren und k0rdent deployen, um dein Management-Cluster zu erstellen."
+image: "images/lesson-header.svg"
+image_caption: "Schritt-für-Schritt-Setup: vom Hetzner-Server zum k0rdent-Management-Cluster"
+sections:
+  - title: "Voraussetzungen"
+    image: "images/section-01-prerequisites.svg"
+    image_caption: "Hetzner Cloud Console — Server-Anforderungen und Setup"
+    explanation: |
+      Bevor wir beginnen, benötigst du:
+
+      - Ein **Hetzner Cloud**-Konto (oder einen beliebigen Linux-Server mit Root-SSH-Zugang)
+      - Einen Server mit mindestens **4 CPU-Kernen, 8 GB RAM, 40 GB Disk** (z.B. Hetzner CX31 oder CPX31)
+      - **Ubuntu 22.04** oder eine ähnliche Linux-Distribution
+      - SSH-Zugang zum Server
+      - Ein lokales Gerät mit einem SSH-Client
+
+      **Hetzner-Setup:**
+      1. Melde dich bei der [Hetzner Cloud Console](https://console.hetzner.cloud) an
+      2. Erstelle ein neues Projekt (z.B. "k0rdent-workshop")
+      3. Erstelle einen Server: **CX31** (2 vCPU, 8 GB RAM) oder größer, Ubuntu 22.04, füge deinen SSH-Key hinzu
+      4. Notiere die öffentliche IP-Adresse des Servers
+    examples:
+      - q: "Was sind die Mindestanforderungen an den Server für ein k0rdent-Management-Cluster?"
+        a: "Mindestens 4 CPU-Kerne, 8 GB RAM und 40 GB Disk-Speicher."
+        labels: ["Basics", "Cluster"]
+        rel:
+          - ["Management Cluster", "Der Kubernetes-Cluster, auf dem k0rdent installiert ist"]
+          - ["Hetzner Cloud", "Deutscher Cloud-Provider mit günstigen VPS- und Dedicated-Servern"]
+
+      - type: input
+        q: "Welche Ubuntu-Version wird für das Management-Cluster empfohlen?"
+        a:
+          - "22.04"
+          - "Ubuntu 22.04"
+        labels: ["Quiz"]
+
+  - title: "Kubernetes installieren (k0s)"
+    image: "images/section-02-k0s.svg"
+    image_caption: "k0s installieren — leichtgewichtiges zertifiziertes Kubernetes"
+    explanation: |
+      SSH auf deinen Hetzner-Server und installiere k0s — eine leichtgewichtige, CNCF-zertifizierte Kubernetes-Distribution:
+
+      ```bash
+      ssh root@DEINE_SERVER_IP
+      ```
+
+      k0s installieren:
+      ```bash
+      curl --proto '=https' --tlsv1.2 -sSf https://get.k0s.sh | sudo sh
+      sudo k0s install controller --enable-worker --no-taints
+      sudo k0s start
+      ```
+
+      Das Flag `--enable-worker` lässt diesen einzelnen Node sowohl als Control Plane als auch als Worker agieren.
+      Das Flag `--no-taints` erlaubt das Ausführen von Workloads auf dem Control-Plane-Node.
+
+      2-3 Minuten warten, dann verifizieren:
+      ```bash
+      sudo k0s kubectl get nodes
+      ```
+
+      Du solltest einen Node im Status `Ready` sehen.
+    examples:
+      - q: "Was macht das Flag --enable-worker?"
+        a: "Es lässt den Control-Plane-Node auch als Worker-Node agieren, sodass Pods darauf eingeplant werden können."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["k0s", "Leichtgewichtige, CNCF-zertifizierte Kubernetes-Distribution"]
+          - ["--enable-worker", "Flag, das einen k0s-Controller auch als Worker agieren lässt"]
+          - ["--no-taints", "Flag, das das Einplanen von Workloads auf Control-Plane-Nodes erlaubt"]
+
+      - type: select
+        q: "Warum verwenden wir --enable-worker und --no-taints für einen Single-Node-Cluster?"
+        options:
+          - text: "Um die Sicherheit zu verbessern"
+          - text: "Damit der einzelne Node sowohl Control-Plane- als auch Workload-Pods ausführen kann"
+            correct: true
+          - text: "Um High Availability zu aktivieren"
+          - text: "Um den Scheduler zu deaktivieren"
+        labels: ["Quiz"]
+
+  - title: "kubectl installieren"
+    image: "images/section-03-kubectl.svg"
+    image_caption: "kubectl installieren und konfigurieren für Cluster-Zugang"
+    explanation: |
+      Das Kubernetes-CLI-Tool installieren:
+
+      ```bash
+      sudo apt-get update
+      sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
+
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key \
+        | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' \
+        | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
+
+      sudo apt-get update
+      sudo apt-get install -y kubectl
+      ```
+
+      kubeconfig konfigurieren, damit kubectl sich mit deinem k0s-Cluster verbinden kann:
+
+      ```bash
+      sudo cp /var/lib/k0s/pki/admin.conf KUBECONFIG
+      sudo chmod +r KUBECONFIG
+      export KUBECONFIG=./KUBECONFIG
+      ```
+
+      Verifizieren:
+      ```bash
+      kubectl get nodes
+      ```
+    examples:
+      - q: "Wo speichert k0s seine admin-kubeconfig?"
+        a: "/var/lib/k0s/pki/admin.conf"
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["kubectl", "Kubernetes-Kommandozeilen-Tool für Cluster-Interaktion"]
+          - ["kubeconfig", "Konfigurationsdatei für die Authentifizierung bei einem Kubernetes-Cluster"]
+
+      - type: input
+        q: "Welcher Befehl verifiziert, dass kubectl sich mit dem Cluster verbinden kann?"
+        a:
+          - "kubectl get nodes"
+        labels: ["Quiz"]
+
+  - title: "Helm installieren"
+    image: "images/section-04-helm.svg"
+    image_caption: "Helm installieren — der Kubernetes-Paketmanager"
+    explanation: |
+      Helm ist der Paketmanager für Kubernetes und wird zur Installation von k0rdent verwendet:
+
+      ```bash
+      curl -fsSL -o get_helm.sh \
+        https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+      chmod 700 get_helm.sh
+      ./get_helm.sh
+      ```
+
+      Helm wird nach `/usr/local/bin/helm` installiert. Verifizieren:
+      ```bash
+      helm version
+      ```
+    examples:
+      - q: "Warum brauchen wir Helm?"
+        a: "k0rdent wird über ein Helm-Chart installiert, und Helm verwaltet das Deployment des KCM-Operators und seiner Subkomponenten."
+        labels: ["Basics", "k0rdent"]
+        rel:
+          - ["Helm", "Paketmanager für Kubernetes, wird zur Installation von k0rdent verwendet"]
+          - ["Helm chart", "Ein Paket mit vorkonfigurierten Kubernetes-Ressourcen"]
+
+  - title: "k0rdent installieren"
+    image: "images/section-05-install-k0rdent.svg"
+    image_caption: "helm install k0rdent — den KCM-Operator deployen"
+    explanation: |
+      Jetzt k0rdent mit dem Helm-Chart installieren:
+
+      ```bash
+      helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm \
+        --version 1.8.0 \
+        -n kcm-system \
+        --create-namespace
+      ```
+
+      Dies deployed den **KCM-Operator**, der dann automatisch alle Subkomponenten deployed, einschließlich:
+      - CAPI (Cluster API)-Controller
+      - Infrastruktur-Provider-Controller (AWS, Azure, GCP, vSphere, OpenStack)
+      - k0smotron für Hosted Control Planes
+      - Flux-Controller für GitOps
+      - ProjectSveltos für Service-Management
+
+      Das gesamte Setup dauert ungefähr **5-10 Minuten**. Du verifizierst die Installation in der nächsten Lektion.
+    examples:
+      - q: "Was ist der Helm-Install-Befehl für k0rdent v1.8.0?"
+        a: "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0 -n kcm-system --create-namespace"
+        labels: ["k0rdent", "CLI"]
+        rel:
+          - ["kcm-system", "Der Namespace, in dem k0rdent-Komponenten installiert werden"]
+          - ["KCM operator", "Der Haupt-Operator, der alle k0rdent-Subkomponenten bootstrappt"]
+
+      - type: select
+        q: "Was macht der KCM-Operator nach der Helm-Installation?"
+        options:
+          - text: "Nichts — du musst jede Komponente manuell installieren"
+          - text: "Deployed automatisch alle Subkomponenten einschließlich CAPI und Provider"
+            correct: true
+          - text: "Installiert nur das Dashboard"
+          - text: "Erstellt sofort Child-Cluster"
+        labels: ["Quiz"]
+
+  - title: "Remote-Zugriff einrichten"
+    image: "images/section-06-remote-access.svg"
+    image_caption: "kubeconfig für Remote-kubectl-Zugriff von deinem lokalen Gerät konfigurieren"
+    explanation: |
+      Um den Cluster von deinem lokalen Gerät aus zu verwalten, kopiere die kubeconfig:
+
+      ```bash
+      # Auf dem Server die kubeconfig anzeigen
+      sudo cat /var/lib/k0s/pki/admin.conf
+      ```
+
+      Den Inhalt auf dein lokales Gerät kopieren und speichern (z.B. `~/.kube/k0rdent-config`). Dann `localhost` durch die öffentliche IP des Servers ersetzen:
+
+      ```bash
+      # Auf deinem lokalen Gerät
+      export KUBECONFIG=~/.kube/k0rdent-config
+      # Datei bearbeiten: 'localhost' oder '127.0.0.1' durch deine Hetzner-Server-IP ersetzen
+      sed -i 's/localhost/DEINE_SERVER_IP/g' ~/.kube/k0rdent-config
+      sed -i 's/127.0.0.1/DEINE_SERVER_IP/g' ~/.kube/k0rdent-config
+
+      kubectl get nodes
+      ```
+
+      Stelle sicher, dass Port **6443** erreichbar ist (Hetzner-Firewall-Einstellungen prüfen).
+    examples:
+      - q: "Auf welchem Port lauscht der Kubernetes-API-Server?"
+        a: "Port 6443."
+        labels: ["Basics", "Kubernetes"]
+
+      - q: "Wie konfigurierst du Remote-kubectl-Zugriff?"
+        a: "Kopiere die kubeconfig vom Server, ersetze localhost durch die öffentliche IP des Servers und setze die KUBECONFIG-Umgebungsvariable."
+        labels: ["Basics", "CLI"]
+
+  - title: "🖥️ Wissens-Check"
+    image: "images/section-07-check.svg"
+    image_caption: "Teste dein Wissen zum k0rdent-Management-Cluster-Setup"
+    explanation: "Teste dein Verständnis des Setup-Prozesses, bevor du weitermachst!"
+    examples:
+      - q: "Was ist der Helm-Install-Befehl zur Installation von k0rdent v1.8.0?"
+        type: input
+        a:
+          - "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0 -n kcm-system --create-namespace"
+          - "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0"
+        labels: ["Quiz"]
+      - q: "Was macht das Flag --enable-worker bei der Installation von k0s?"
+        type: select
+        options:
+          - text: "Es aktiviert das Kubernetes-Dashboard"
+          - text: "Es lässt den Control-Plane-Node auch als Worker agieren, sodass Pods darauf eingeplant werden können"
+            correct: true
+          - text: "Es aktiviert den High-Availability-Modus"
+          - text: "Es deaktiviert alle Sicherheitsrichtlinien"
+        labels: ["Quiz"]
+      - q: "Welche Tools müssen vor k0rdent installiert werden? (Mehrfachauswahl)"
+        type: multiple-choice
+        options:
+          - text: "k0s (Kubernetes)"
+            correct: true
+          - text: "kubectl"
+            correct: true
+          - text: "Helm"
+            correct: true
+          - text: "Docker Desktop"
+        labels: ["Quiz"]

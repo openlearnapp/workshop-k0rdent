@@ -1,0 +1,9 @@
+workshops:
+  - folder: k0rdent-workshop
+    code: de-DE
+    title: "k0rdent Workshop"
+    description: "Praxisworkshop für Platform Engineers. Von Container-Basics bis Multi-Cluster-Management mit k0rdent auf Hetzner — von Null bis Produktion."
+    color: "220 45% 92%"
+    primaryColor: "220 75% 45%"
+    image: "k0rdent-workshop/thumbnail.svg"
+    labels: ["IT", "Kubernetes", "Platform Engineering", "Fortgeschritten"]
