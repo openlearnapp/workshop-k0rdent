@@ -1,0 +1,262 @@
+version: 2
+number: 5
+title: "نظام القوالب"
+description: "استعراض معمّق لبنية k0rdent القائمة على القوالب: ClusterTemplates وServiceTemplates وProviderTemplates."
+image: "images/lesson-header.svg"
+image_caption: "نظام قوالب k0rdent — مخططات ثابتة للـ Cluster والخدمات"
+sections:
+  - title: "أنواع القوالب"
+    image: "images/section-01-template-types.svg"
+    image_caption: "ثلاثة أنواع من القوالب: ClusterTemplate وServiceTemplate وProviderTemplate"
+    explanation: |
+      يستخدم k0rdent ثلاثة أنواع من القوالب — وجميعها **ثابتة** بعد الإنشاء ولا يمكن تعديلها:
+
+      **1. ClusterTemplate**
+      يُعرّف البنية التحتية لإنشاء Cluster جديدة. يُغلّف Helm chart يحتوي على كائنات CAPI (Machine وCluster وغيرها).
+
+      **2. ServiceTemplate**
+      يُعرّف الخدمات والإضافات وأعباء العمل التي سيتم نشرها على Cluster موجودة. يدعم Helm charts وKustomize والموارد المباشرة.
+
+      **3. ProviderTemplate**
+      يكشف عن موفّري CAPI (البنية التحتية، وBootstrap، وصفحة التحكم). تُديره k0rdent — عادةً لا تحتاج إلى إنشاء هذه القوالب بنفسك.
+
+      جميع القوالب بصيغة YAML، وتدعم معاملات وقت التشغيل، وتتبع نمطاً تصريحياً.
+    examples:
+      - q: "ما هي أنواع القوالب الثلاثة في k0rdent؟"
+        a: "ClusterTemplate (البنية التحتية)، وServiceTemplate (الخدمات والتطبيقات)، وProviderTemplate (موفّرو CAPI)."
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["ClusterTemplate", "مخطط ثابت لبنية الـ Cluster التحتية، يُغلّف Helm + CAPI"]
+          - ["ServiceTemplate", "مخطط ثابت للخدمات، يدعم Helm/Kustomize/الموارد"]
+          - ["ProviderTemplate", "يكشف عن موفّري CAPI، تُديره k0rdent"]
+
+      - type: select
+        q: "أي نوع من القوالب ستستخدم لنشر nginx-ingress على Cluster؟"
+        options:
+          - text: "ClusterTemplate"
+          - text: "ServiceTemplate"
+            correct: true
+          - text: "ProviderTemplate"
+        labels: ["Quiz"]
+
+  - title: "ثبات القوالب"
+    image: "images/section-02-immutability.svg"
+    image_caption: "لا يمكن تعديل القوالب — أنشئ إصداراً جديداً عوضاً عن ذلك"
+    explanation: |
+      مبدأ تصميمي أساسي: **القوالب ثابتة بعد إنشائها**. لا يمكنك تعديل مواصفات القالب بعد تطبيقه.
+
+      لإجراء أي تغييرات، يجب عليك:
+      1. إنشاء **قالب جديد** باسم مختلف (عادةً مع لاحقة إصدار)
+      2. تحديث ClusterDeployment أو الخدمة للإشارة إلى القالب الجديد
+
+      هذا يضمن قابلية التكرار والتدقيق — ستعرف دائماً بالضبط الإعداد الذي استُخدم لكل Cluster.
+    examples:
+      - q: "هل يمكن تعديل ClusterTemplate بعد إنشائه؟"
+        a: "لا. القوالب ثابتة. يجب إنشاء قالب جديد باسم مختلف لأي تغييرات."
+        labels: ["Templates", "k0rdent"]
+
+      - type: select
+        q: "تحتاج إلى تغيير نوع الـ Instance في ClusterTemplate. ماذا تفعل؟"
+        options:
+          - text: "تعديل القالب الموجود باستخدام kubectl edit"
+          - text: "إنشاء قالب جديد بالتغيير المطلوب واسم إصدار جديد"
+            correct: true
+          - text: "حذف القالب وإعادة إنشائه بنفس الاسم"
+          - text: "تطبيق Patch على مواصفات القالب"
+        labels: ["Quiz"]
+
+  - title: "كائنات المصدر"
+    image: "images/section-03-sources.svg"
+    image_caption: "كائنات المصدر: HelmRepository وGitRepository وOCIRepository مع تسمية managed"
+    explanation: |
+      تُشير القوالب إلى **كائنات مصدر** تحتوي على محتوى النشر الفعلي. المصادر المدعومة:
+
+      | المصدر | ClusterTemplate | ServiceTemplate | ProviderTemplate |
+      |--------|:-:|:-:|:-:|
+      | HelmRepository | نعم | نعم | نعم |
+      | GitRepository | نعم | نعم | نعم |
+      | OCIRepository | نعم | نعم | نعم |
+      | Bucket | - | نعم | - |
+      | ConfigMap | - | نعم | - |
+      | Secret | - | نعم | - |
+
+      يجب أن تحمل كائنات المصدر التسمية `k0rdent.mirantis.com/managed: "true"` حتى تتعرف عليها k0rdent.
+    examples:
+      - q: "ما التسمية التي يجب أن تحملها كائنات المصدر؟"
+        a: 'k0rdent.mirantis.com/managed: "true"'
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["HelmRepository", "كائن مصدر Flux يشير إلى مستودع Helm chart"]
+          - ["GitRepository", "كائن مصدر Flux يشير إلى مستودع Git"]
+          - ["OCIRepository", "كائن مصدر Flux يشير إلى سجل حاويات OCI"]
+
+      - type: multiple-choice
+        q: "أي أنواع المصادر يدعمها ServiceTemplate دون ClusterTemplate؟ (اختر كل ما ينطبق)"
+        options:
+          - text: "Bucket"
+            correct: true
+          - text: "ConfigMap"
+            correct: true
+          - text: "HelmRepository"
+          - text: "Secret"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "بنية ClusterTemplate"
+    image: "images/section-04-clustertemplate.svg"
+    image_caption: "بنية YAML لـ ClusterTemplate مع helm.chartSpec والموفّرين"
+    explanation: |
+      يُغلّف ClusterTemplate مخطط Helm ويُعلن عن الموفّرين الذين يحتاجهم:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplate
+      metadata:
+        name: custom-aws-standalone
+        namespace: project-ottowa
+      spec:
+        k8sVersion: 1.30.0
+        helm:
+          chartSpec:
+            chart: custom-standalone-cp
+            version: 1.0.1
+            sourceRef:
+              kind: HelmRepository
+              name: custom-repo
+        providers:
+          - bootstrap-k0sproject-k0smotron
+          - control-plane-k0sproject-k0smotron
+          - infrastructure-aws
+        providerContracts:
+          bootstrap-k0sproject-k0smotron: v1beta1
+          control-plane-k0sproject-k0smotron: v1beta1
+          infrastructure-aws: v1beta2
+      ```
+
+      الحقول الرئيسية:
+      - `k8sVersion` — إصدار Kubernetes المستهدف للتحقق من التوافق
+      - `helm.chartSpec` — يشير إلى Helm chart
+      - `providers` — موفّرو CAPI المطلوبون
+      - `providerContracts` — إصدارات العقود للتوافق
+    examples:
+      - q: "ما الذي يُحدده حقل providers في ClusterTemplate؟"
+        a: "موفّرو CAPI المطلوبون لنشر هذا النوع من الـ Cluster (مثل موفّري Bootstrap وصفحة التحكم والبنية التحتية)."
+        labels: ["Templates", "k0rdent"]
+
+      - q: "ما طرق إعداد Helm المتاحة؟"
+        a: "chartRef (الإشارة إلى HelmChart موجود)، أو chartSpec (تعريف مضمّن للـ Chart)، أو chartSource (مصدر Git/OCI)."
+        labels: ["Templates", "k0rdent"]
+
+  - title: "بنية ServiceTemplate"
+    image: "images/section-05-servicetemplate.svg"
+    image_caption: "بنية YAML لـ ServiceTemplate مع k8sConstraint وhelmOptions"
+    explanation: |
+      تُعرّف ServiceTemplates طريقة نشر التطبيقات على Cluster الأطفال:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplate
+      metadata:
+        name: ingress-nginx-4.11.3
+        namespace: my-namespace
+      spec:
+        helm:
+          chartSpec:
+            chart: ingress-nginx
+            version: 4.11.3
+            interval: 10m0s
+            sourceRef:
+              kind: HelmRepository
+              name: k0rdent-catalog
+      ```
+
+      حقول اختيارية إضافية:
+      - `spec.k8sConstraint` — توافق إصدار Kubernetes (مثل `">=1.28.0 <1.32.0"`)
+      - `spec.helmOptions` — للتحكم في `wait` و`atomic` و`timeout` و`createNamespace` وغيرها
+    examples:
+      - q: "ما وظيفة k8sConstraint في ServiceTemplate؟"
+        a: "يُحدد إصدارات Kubernetes المتوافقة مع الخدمة، باستخدام صيغة semver مثل '>=1.28.0 <1.32.0'."
+        labels: ["Templates", "Services"]
+        rel:
+          - ["k8sConstraint", "قيد توافق Kubernetes بصيغة SemVer في ServiceTemplates"]
+          - ["helmOptions", "عناصر التحكم في سلوك Helm العام (wait، atomic، timeout، إلخ)"]
+
+      - type: input
+        q: "ServiceTemplates ثابتة. صح أم خطأ؟"
+        a:
+          - "true"
+          - "True"
+        labels: ["Quiz"]
+
+  - title: "سلاسل القوالب"
+    image: "images/section-06-chains.svg"
+    image_caption: "ClusterTemplateChain تُعرّف مسارات الترقية الصالحة بين إصدارات القوالب"
+    explanation: |
+      تُعرّف **TemplateChains** مسارات الترقية الصالحة بين إصدارات القوالب:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplateChain
+      metadata:
+        name: aws-standalone-cp
+      spec:
+        supportedTemplates:
+          - name: aws-standalone-cp-1-0-22
+          - name: aws-standalone-cp-1-0-20
+            availableUpgrades:
+              - name: aws-standalone-cp-1-0-22
+      ```
+
+      هذه السلسلة تعني: يمكن ترقية الـ Cluster التي تستخدم `aws-standalone-cp-1-0-20` إلى `aws-standalone-cp-1-0-22`، لكن لا يمكن التخطي إلى إصدارات اعتباطية أخرى.
+
+      تعمل ServiceTemplateChains بنفس الطريقة لترقيات الخدمات.
+    examples:
+      - q: "ما الذي تتحكم فيه TemplateChains؟"
+        a: "تُعرّف مسارات الترقية الصالحة — أي إصدارات القوالب يمكن الترقية إليها من أي إصدارات أخرى."
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["ClusterTemplateChain", "تُعرّف مسارات الترقية الصالحة بين إصدارات ClusterTemplate"]
+          - ["ServiceTemplateChain", "تُعرّف مسارات الترقية الصالحة بين إصدارات ServiceTemplate"]
+
+      - type: select
+        q: "ما الذي يحدث إذا حاولت تحديث Cluster إلى قالب غير موجود في سلسلته؟"
+        options:
+          - text: "التحديث يتم بشكل طبيعي"
+          - text: "يُرفض التحديث لأن مسار الترقية غير معرّف"
+            correct: true
+          - text: "يتم حذف الـ Cluster وإعادة إنشائها"
+          - text: "يُسجَّل تحذير لكن التحديث يتم"
+        labels: ["Quiz"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-07-check.svg"
+    image_caption: "اختبر معرفتك بنظام القوالب في k0rdent"
+    explanation: "اختبر فهمك للقوالب قبل النشر العملي للـ Cluster!"
+    examples:
+      - q: "القوالب في k0rdent ثابتة. ماذا يعني ذلك؟"
+        type: input
+        a:
+          - "You cannot change them after creation"
+          - "Templates cannot be modified after creation"
+          - "They cannot be edited"
+        labels: ["Quiz"]
+      - q: "ما التسمية التي يجب أن تحملها كائنات المصدر حتى تتعرف عليها k0rdent؟"
+        type: select
+        options:
+          - text: "k0rdent.mirantis.com/source: true"
+          - text: "k0rdent.mirantis.com/managed: \"true\""
+            correct: true
+          - text: "flux.io/k0rdent: enabled"
+          - text: "app.kubernetes.io/managed-by: k0rdent"
+        labels: ["Quiz"]
+      - q: "أي من هذه أنواع قوالب k0rdent؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "ClusterTemplate"
+            correct: true
+          - text: "ServiceTemplate"
+            correct: true
+          - text: "ProviderTemplate"
+            correct: true
+          - text: "DeploymentTemplate"
+        labels: ["Quiz"]
