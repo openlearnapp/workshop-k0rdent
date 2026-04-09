@@ -1,10 +1,13 @@
 version: 2
-number: 2
+number: 3
 title: "Setting Up the Management Cluster on Hetzner"
 description: "Provision a Hetzner server, install k0s, kubectl, Helm, and deploy k0rdent to create your management cluster."
-
+image: "images/lesson-header.svg"
+image_caption: "Step-by-step setup: Hetzner server to k0rdent management cluster"
 sections:
   - title: "Prerequisites"
+    image: "images/section-01-prerequisites.svg"
+    image_caption: "Hetzner Cloud Console — server requirements and setup"
     explanation: |
       Before we begin, you'll need:
 
@@ -22,6 +25,7 @@ sections:
     examples:
       - q: "What are the minimum server requirements for a k0rdent management cluster?"
         a: "At least 4 CPU cores, 8 GB RAM, and 40 GB disk space."
+        labels: ["Basics", "Cluster"]
         rel:
           - ["Management Cluster", "The Kubernetes cluster where k0rdent is installed"]
           - ["Hetzner Cloud", "German cloud provider with affordable VPS and dedicated servers"]
@@ -34,6 +38,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Install Kubernetes (k0s)"
+    image: "images/section-02-k0s.svg"
+    image_caption: "Installing k0s — lightweight certified Kubernetes"
     explanation: |
       SSH into your Hetzner server and install k0s — a lightweight, CNCF-certified Kubernetes distribution:
 
@@ -60,6 +66,7 @@ sections:
     examples:
       - q: "What does the --enable-worker flag do?"
         a: "It makes the control plane node also act as a worker node, so pods can be scheduled on it."
+        labels: ["Basics", "Kubernetes"]
         rel:
           - ["k0s", "Lightweight, CNCF-certified Kubernetes distribution"]
           - ["--enable-worker", "Flag that makes a k0s controller also act as a worker"]
@@ -76,6 +83,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Install kubectl"
+    image: "images/section-03-kubectl.svg"
+    image_caption: "Installing and configuring kubectl for cluster access"
     explanation: |
       Install the Kubernetes CLI tool:
 
@@ -110,6 +119,7 @@ sections:
     examples:
       - q: "Where does k0s store its admin kubeconfig?"
         a: "/var/lib/k0s/pki/admin.conf"
+        labels: ["Basics", "Kubernetes"]
         rel:
           - ["kubectl", "Kubernetes command-line tool for cluster interaction"]
           - ["kubeconfig", "Configuration file for authenticating to a Kubernetes cluster"]
@@ -121,6 +131,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Install Helm"
+    image: "images/section-04-helm.svg"
+    image_caption: "Installing Helm — the Kubernetes package manager"
     explanation: |
       Helm is the package manager for Kubernetes and is used to install k0rdent:
 
@@ -138,11 +150,14 @@ sections:
     examples:
       - q: "Why do we need Helm?"
         a: "k0rdent is installed via a Helm chart, and Helm manages the deployment of the KCM operator and its subcomponents."
+        labels: ["Basics", "k0rdent"]
         rel:
           - ["Helm", "Package manager for Kubernetes, used to install k0rdent"]
           - ["Helm chart", "A package of pre-configured Kubernetes resources"]
 
   - title: "Install k0rdent"
+    image: "images/section-05-install-k0rdent.svg"
+    image_caption: "helm install k0rdent — deploying the KCM operator"
     explanation: |
       Now install k0rdent using the Helm chart:
 
@@ -164,6 +179,7 @@ sections:
     examples:
       - q: "What is the Helm install command for k0rdent v1.8.0?"
         a: "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0 -n kcm-system --create-namespace"
+        labels: ["k0rdent", "CLI"]
         rel:
           - ["kcm-system", "The namespace where k0rdent components are installed"]
           - ["KCM operator", "The main operator that bootstraps all k0rdent subcomponents"]
@@ -179,6 +195,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Remote Access Setup"
+    image: "images/section-06-remote-access.svg"
+    image_caption: "Configuring kubeconfig for remote kubectl access from your local machine"
     explanation: |
       To manage the cluster from your local machine, copy the kubeconfig:
 
@@ -203,6 +221,40 @@ sections:
     examples:
       - q: "What port does the Kubernetes API server listen on?"
         a: "Port 6443."
+        labels: ["Basics", "Kubernetes"]
 
       - q: "How do you configure remote kubectl access?"
         a: "Copy the kubeconfig from the server, replace localhost with the server's public IP, and set the KUBECONFIG environment variable."
+        labels: ["Basics", "CLI"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-07-check.svg"
+    image_caption: "Test your knowledge of k0rdent management cluster setup"
+    explanation: "Test your understanding of the setup process before moving on!"
+    examples:
+      - q: "What is the Helm install command to install k0rdent v1.8.0?"
+        type: input
+        a:
+          - "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0 -n kcm-system --create-namespace"
+          - "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0"
+        labels: ["Quiz"]
+      - q: "What does the --enable-worker flag do when installing k0s?"
+        type: select
+        options:
+          - text: "It enables the Kubernetes dashboard"
+          - text: "It makes the control plane node also act as a worker, allowing pods to be scheduled on it"
+            correct: true
+          - text: "It enables high availability mode"
+          - text: "It disables all security policies"
+        labels: ["Quiz"]
+      - q: "Which tools must be installed before k0rdent? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "k0s (Kubernetes)"
+            correct: true
+          - text: "kubectl"
+            correct: true
+          - text: "Helm"
+            correct: true
+          - text: "Docker Desktop"
+        labels: ["Quiz"]

@@ -1,10 +1,13 @@
 version: 2
-number: 4
+number: 5
 title: "The Templating System"
 description: "Deep dive into k0rdent's template-driven architecture: ClusterTemplates, ServiceTemplates, and ProviderTemplates."
-
+image: "images/lesson-header.svg"
+image_caption: "k0rdent template system — immutable blueprints for clusters and services"
 sections:
   - title: "Template Types"
+    image: "images/section-01-template-types.svg"
+    image_caption: "Three template types: ClusterTemplate, ServiceTemplate, ProviderTemplate"
     explanation: |
       k0rdent uses three types of templates — all are **immutable** after creation:
 
@@ -21,6 +24,7 @@ sections:
     examples:
       - q: "What are the three template types in k0rdent?"
         a: "ClusterTemplate (infrastructure), ServiceTemplate (services/apps), and ProviderTemplate (CAPI providers)."
+        labels: ["Templates", "k0rdent"]
         rel:
           - ["ClusterTemplate", "Immutable blueprint for cluster infrastructure, wraps Helm + CAPI"]
           - ["ServiceTemplate", "Immutable blueprint for services, supports Helm/Kustomize/resources"]
@@ -36,6 +40,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Template Immutability"
+    image: "images/section-02-immutability.svg"
+    image_caption: "Templates cannot be edited — create new version instead"
     explanation: |
       A critical design principle: **templates are immutable after creation**. You cannot modify a template's spec once it's applied.
 
@@ -47,6 +53,7 @@ sections:
     examples:
       - q: "Can you edit a ClusterTemplate after creating it?"
         a: "No. Templates are immutable. You must create a new template with a different name for any changes."
+        labels: ["Templates", "k0rdent"]
 
       - type: select
         q: "You need to change the instance type in a ClusterTemplate. What do you do?"
@@ -59,6 +66,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Source Objects"
+    image: "images/section-03-sources.svg"
+    image_caption: "Source objects: HelmRepository, GitRepository, OCIRepository with managed label"
     explanation: |
       Templates reference **source objects** that contain the actual deployment content. Supported sources:
 
@@ -75,6 +84,7 @@ sections:
     examples:
       - q: "What label must source objects have?"
         a: 'k0rdent.mirantis.com/managed: "true"'
+        labels: ["Templates", "k0rdent"]
         rel:
           - ["HelmRepository", "Flux source object pointing to a Helm chart repository"]
           - ["GitRepository", "Flux source object pointing to a Git repository"]
@@ -93,6 +103,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "ClusterTemplate Anatomy"
+    image: "images/section-04-clustertemplate.svg"
+    image_caption: "ClusterTemplate YAML structure with helm.chartSpec and providers"
     explanation: |
       A ClusterTemplate wraps a Helm chart and declares which providers it needs:
 
@@ -129,11 +141,15 @@ sections:
     examples:
       - q: "What does the providers field in a ClusterTemplate specify?"
         a: "The CAPI providers required to deploy this cluster type (e.g., bootstrap, control-plane, and infrastructure providers)."
+        labels: ["Templates", "k0rdent"]
 
       - q: "What Helm configuration methods are available?"
         a: "chartRef (reference existing HelmChart), chartSpec (inline chart definition), or chartSource (Git/OCI source)."
+        labels: ["Templates", "k0rdent"]
 
   - title: "ServiceTemplate Anatomy"
+    image: "images/section-05-servicetemplate.svg"
+    image_caption: "ServiceTemplate YAML structure with k8sConstraint and helmOptions"
     explanation: |
       ServiceTemplates define how applications deploy to child clusters:
 
@@ -160,6 +176,7 @@ sections:
     examples:
       - q: "What does k8sConstraint do in a ServiceTemplate?"
         a: "It defines which Kubernetes versions the service is compatible with, using semver syntax like '>=1.28.0 <1.32.0'."
+        labels: ["Templates", "Services"]
         rel:
           - ["k8sConstraint", "SemVer-format Kubernetes compatibility constraint on ServiceTemplates"]
           - ["helmOptions", "Global Helm behavior controls (wait, atomic, timeout, etc.)"]
@@ -172,6 +189,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Template Chains"
+    image: "images/section-06-chains.svg"
+    image_caption: "ClusterTemplateChain defines valid upgrade paths between template versions"
     explanation: |
       **TemplateChains** define valid upgrade paths between template versions:
 
@@ -194,6 +213,7 @@ sections:
     examples:
       - q: "What do TemplateChains control?"
         a: "They define valid upgrade paths — which template versions can be upgraded to which newer versions."
+        labels: ["Templates", "k0rdent"]
         rel:
           - ["ClusterTemplateChain", "Defines valid upgrade paths between ClusterTemplate versions"]
           - ["ServiceTemplateChain", "Defines valid upgrade paths between ServiceTemplate versions"]
@@ -206,4 +226,37 @@ sections:
             correct: true
           - text: "The cluster is deleted and recreated"
           - text: "A warning is logged but the update proceeds"
+        labels: ["Quiz"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-07-check.svg"
+    image_caption: "Test your knowledge of k0rdent's templating system"
+    explanation: "Test your understanding of templates before the hands-on cluster deployment!"
+    examples:
+      - q: "Templates in k0rdent are immutable. What does this mean?"
+        type: input
+        a:
+          - "You cannot change them after creation"
+          - "Templates cannot be modified after creation"
+          - "They cannot be edited"
+        labels: ["Quiz"]
+      - q: "What label must source objects have for k0rdent to recognize them?"
+        type: select
+        options:
+          - text: "k0rdent.mirantis.com/source: true"
+          - text: "k0rdent.mirantis.com/managed: \"true\""
+            correct: true
+          - text: "flux.io/k0rdent: enabled"
+          - text: "app.kubernetes.io/managed-by: k0rdent"
+        labels: ["Quiz"]
+      - q: "Which of these are k0rdent template types? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "ClusterTemplate"
+            correct: true
+          - text: "ServiceTemplate"
+            correct: true
+          - text: "ProviderTemplate"
+            correct: true
+          - text: "DeploymentTemplate"
         labels: ["Quiz"]

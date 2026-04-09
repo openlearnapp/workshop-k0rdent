@@ -1,4 +1,5 @@
 lessons:
+  - 00-containers-kubernetes
   - 01-welcome
   - 02-management-cluster-setup
   - 03-verify-installation

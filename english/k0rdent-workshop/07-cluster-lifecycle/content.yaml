@@ -1,10 +1,13 @@
 version: 2
-number: 7
+number: 8
 title: "Managing Cluster Lifecycle"
 description: "Update clusters, enable drift detection, adopt existing clusters, and tear down deployments."
-
+image: "images/lesson-header.svg"
+image_caption: "Cluster lifecycle: update via template patch, drift detection, adoption, teardown"
 sections:
   - title: "Updating a Cluster"
+    image: "images/section-01-update.svg"
+    image_caption: "kubectl patch ClusterDeployment to reference new template version"
     explanation: |
       k0rdent uses an **immutable template** approach for cluster updates. Instead of modifying a ClusterDeployment directly, you change the template it references:
 
@@ -29,6 +32,7 @@ sections:
     examples:
       - q: "How do you update a cluster in k0rdent?"
         a: "Patch the ClusterDeployment to reference a new ClusterTemplate version. k0rdent reconciles the cluster automatically."
+        labels: ["Cluster", "k0rdent"]
         rel:
           - ["Reconciliation", "Process where k0rdent detects desired vs actual state and makes changes"]
 
@@ -43,6 +47,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Template Chain Constraints"
+    image: "images/section-02-chains.svg"
+    image_caption: "ClusterTemplateChain restricts which template versions can be upgraded to"
     explanation: |
       Not all template transitions are allowed. **ClusterTemplateChains** define valid upgrade paths:
 
@@ -68,8 +74,11 @@ sections:
     examples:
       - q: "What happens if you try to patch a ClusterDeployment with an unsupported template?"
         a: "The update is rejected because the upgrade path is not defined in the ClusterTemplateChain."
+        labels: ["Cluster", "Templates"]
 
   - title: "Drift Detection"
+    image: "images/section-03-drift.svg"
+    image_caption: "ContinuousWithDriftDetection mode auto-corrects unauthorized resource changes"
     explanation: |
       Drift detection monitors deployed resources and automatically corrects unauthorized changes:
 
@@ -94,6 +103,7 @@ sections:
     examples:
       - q: "What does ContinuousWithDriftDetection do?"
         a: "It monitors deployed resources using hash values and automatically reconciles any unauthorized changes back to the desired state."
+        labels: ["Services", "k0rdent"]
         rel:
           - ["syncMode", "Controls how k0rdent handles deployed resource changes"]
           - ["ContinuousWithDriftDetection", "Sync mode that auto-corrects configuration drift"]
@@ -110,6 +120,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Drift Ignore and Exclusions"
+    image: "images/section-04-drift-ignore.svg"
+    image_caption: "driftIgnore and driftExclusions for fine-grained drift control"
     explanation: |
       Sometimes you want to exclude specific resources or fields from drift correction:
 
@@ -142,11 +154,14 @@ sections:
     examples:
       - q: "How do you prevent drift detection from reverting HPA-managed replica changes?"
         a: "Use driftExclusions to exclude the /spec/replicas path from drift detection for that Deployment."
+        labels: ["Services", "k0rdent"]
         rel:
           - ["driftIgnore", "Excludes entire resources from drift correction"]
           - ["driftExclusions", "Excludes specific JSON paths from drift detection"]
 
   - title: "Adopting Existing Clusters"
+    image: "images/section-05-adopt.svg"
+    image_caption: "adopted-cluster template brings existing clusters under k0rdent management"
     explanation: |
       You can bring existing Kubernetes clusters under k0rdent management:
 
@@ -184,6 +199,7 @@ sections:
     examples:
       - q: "Can k0rdent manage clusters it didn't create?"
         a: "Yes — using the adopted-cluster template, you can bring existing clusters under k0rdent management."
+        labels: ["Cluster", "k0rdent"]
         rel:
           - ["adopted-cluster", "Template for bringing existing clusters under k0rdent management"]
 
@@ -198,6 +214,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Tearing Down a Cluster"
+    image: "images/section-06-teardown.svg"
+    image_caption: "kubectl delete ClusterDeployment — deprovisions cluster and optionally cleans up cloud resources"
     explanation: |
       To delete a child cluster:
 
@@ -211,6 +229,7 @@ sections:
     examples:
       - q: "What happens to workloads when you delete a ClusterDeployment?"
         a: "All workloads on the child cluster are lost. The cluster and its nodes are deprovisioned."
+        labels: ["Cluster", "k0rdent"]
 
       - type: select
         q: "What does cleanupOnDeletion: true do?"
@@ -220,4 +239,37 @@ sections:
             correct: true
           - text: "Prevents accidental deletion"
           - text: "Migrates workloads to another cluster"
+        labels: ["Quiz"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-07-check.svg"
+    image_caption: "Test your knowledge of k0rdent cluster lifecycle management"
+    explanation: "Test your understanding of cluster updates, drift, and teardown!"
+    examples:
+      - q: "How do you update a cluster to a new Kubernetes version in k0rdent?"
+        type: input
+        a:
+          - "Change the template field in ClusterDeployment"
+          - "Update the template reference in ClusterDeployment"
+          - "Edit ClusterDeployment and change the template"
+        labels: ["Quiz"]
+      - q: "What is configuration drift in k0rdent?"
+        type: select
+        options:
+          - text: "When a cluster's nodes move to a different availability zone"
+          - text: "When actual cluster state diverges from what k0rdent defined — detected and reported automatically"
+            correct: true
+          - text: "When the management cluster is out of sync with GitHub"
+          - text: "When two clusters have the same configuration"
+        labels: ["Quiz"]
+      - q: "Which lifecycle operations does k0rdent support? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "Update Kubernetes version via template change"
+            correct: true
+          - text: "Adopt existing clusters not created by k0rdent"
+            correct: true
+          - text: "Auto-scale nodes based on CPU usage"
+          - text: "Tear down clusters with optional cloud resource cleanup"
+            correct: true
         labels: ["Quiz"]

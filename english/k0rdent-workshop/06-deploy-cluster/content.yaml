@@ -1,10 +1,13 @@
 version: 2
-number: 6
+number: 7
 title: "Deploying Your First Cluster"
 description: "Deploy a k0s child cluster to Hetzner servers using k0rdent's Remote/SSH provider."
-
+image: "images/lesson-header.svg"
+image_caption: "ClusterDeployment applied — k0rdent provisioning k0s via SSH on Hetzner"
 sections:
   - title: "Deployment Overview"
+    image: "images/section-01-overview.svg"
+    image_caption: "8-step cluster deployment process with Remote/SSH provider"
     explanation: |
       Deploying a cluster with k0rdent follows an **8-step process**:
 
@@ -21,10 +24,13 @@ sections:
     examples:
       - q: "What are the 8 steps to deploy a cluster with k0rdent?"
         a: "Create credentials, select template, configure auth (optional), write ClusterDeployment YAML, apply, verify, monitor, and retrieve kubeconfig."
+        labels: ["Cluster", "k0rdent"]
         rel:
           - ["ClusterDeployment", "CRD representing the desired state of a managed cluster"]
 
   - title: "Prepare Worker Nodes on Hetzner"
+    image: "images/section-02-worker-nodes.svg"
+    image_caption: "Creating 1-2 Hetzner servers as worker nodes with SSH access"
     explanation: |
       Create 1-2 additional Hetzner servers that will become your child cluster worker nodes:
 
@@ -47,6 +53,7 @@ sections:
     examples:
       - q: "What are the requirements for remote worker nodes?"
         a: "Linux OS, SSH root access, internet connectivity, and network connectivity to the management cluster."
+        labels: ["Cluster", "k0rdent"]
 
       - type: multiple-choice
         q: "What must be true about the worker nodes? (Select all)"
@@ -60,6 +67,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Create the SSH Credential"
+    image: "images/section-03-ssh-credential.svg"
+    image_caption: "Creating SSH Secret, Credential, and resource-template ConfigMap"
     explanation: |
       If you haven't done so in the previous lesson, create the SSH credential:
 
@@ -121,10 +130,13 @@ sections:
     examples:
       - q: "Why do we need the remote-ssh-key-resource-template ConfigMap?"
         a: "It's required by k0rdent's remote provider for future templating needs. It contains only metadata — no actual data values."
+        labels: ["Security", "k0rdent"]
         rel:
           - ["remote-ssh-key-resource-template", "Required ConfigMap for remote/SSH credential setup"]
 
   - title: "Select a Template and Deploy"
+    image: "images/section-04-deploy.svg"
+    image_caption: "ClusterDeployment YAML with remote-cluster template and SSH credential"
     explanation: |
       List available remote templates:
       ```bash
@@ -169,6 +181,7 @@ sections:
     examples:
       - q: "Why do we use NodePort instead of LoadBalancer for Hetzner?"
         a: "Hetzner doesn't have a built-in cloud LoadBalancer integration for Kubernetes. NodePort works without any cloud provider."
+        labels: ["Cluster", "k0rdent"]
         rel:
           - ["NodePort", "Kubernetes service type that exposes a port on each node"]
           - ["LoadBalancer", "Kubernetes service type that provisions a cloud load balancer"]
@@ -185,6 +198,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Monitor and Verify"
+    image: "images/section-05-monitor.svg"
+    image_caption: "Watching cluster provisioning via kubectl and clusterctl"
     explanation: |
       Watch the cluster being provisioned:
 
@@ -215,11 +230,14 @@ sections:
     examples:
       - q: "How do you check if remote machines are ready?"
         a: "kubectl get remotemachines with a label selector and check for {\"ready\":true} in the status."
+        labels: ["Cluster", "CLI"]
         rel:
           - ["remotemachines", "CRD representing remote machines managed via SSH"]
           - ["clusterctl", "CLI tool for Cluster API operations and diagnostics"]
 
   - title: "Get the Kubeconfig"
+    image: "images/section-06-kubeconfig.svg"
+    image_caption: "Retrieving and using the child cluster kubeconfig"
     explanation: |
       Once the cluster is ready, retrieve the kubeconfig:
 
@@ -245,6 +263,7 @@ sections:
     examples:
       - q: "Where is the child cluster's kubeconfig stored?"
         a: "In a Secret named <cluster-name>-kubeconfig in the same namespace as the ClusterDeployment."
+        labels: ["Cluster", "CLI"]
 
       - type: input
         q: "What command lists all ClusterDeployments?"
@@ -255,6 +274,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Key ClusterDeployment Fields"
+    image: "images/section-07-fields.svg"
+    image_caption: "ClusterDeployment spec fields: template, credential, dryRun, cleanupOnDeletion"
     explanation: |
       Understanding the ClusterDeployment spec:
 
@@ -279,6 +300,7 @@ sections:
     examples:
       - q: "What does dryRun: true do?"
         a: "Simulates the deployment to validate configuration without actually provisioning any cloud resources."
+        labels: ["Cluster", "k0rdent"]
         rel:
           - ["dryRun", "Simulate deployment without provisioning resources"]
           - ["cleanupOnDeletion", "Remove orphaned resources when cluster is deleted"]
@@ -291,4 +313,37 @@ sections:
             correct: true
           - text: "testMode: true"
           - text: "preview: true"
+        labels: ["Quiz"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-08-check.svg"
+    image_caption: "Test your knowledge of deploying Kubernetes clusters with k0rdent"
+    explanation: "Test your understanding of the cluster deployment process!"
+    examples:
+      - q: "Where is the child cluster's kubeconfig stored after deployment?"
+        type: input
+        a:
+          - "In a Secret named <cluster-name>-kubeconfig"
+          - "A Secret named <cluster-name>-kubeconfig"
+          - "In a Kubernetes Secret"
+        labels: ["Quiz"]
+      - q: "What does the dryRun field do in a ClusterDeployment?"
+        type: select
+        options:
+          - text: "Creates the cluster in a test environment"
+          - text: "Validates the configuration without provisioning real resources"
+            correct: true
+          - text: "Deploys a minimal single-node cluster"
+          - text: "Runs health checks on existing clusters"
+        labels: ["Quiz"]
+      - q: "Which of these are required in a ClusterDeployment spec? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "template — the ClusterTemplate to use"
+            correct: true
+          - text: "credential — the Credential for authentication"
+            correct: true
+          - text: "dryRun — always required"
+          - text: "config — template-specific parameters"
+            correct: true
         labels: ["Quiz"]

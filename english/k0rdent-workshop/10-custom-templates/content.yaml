@@ -1,10 +1,14 @@
 version: 2
-number: 10
+number: 11
 title: "Creating Custom Templates"
 description: "Build, package, and deploy your own ClusterTemplates and ServiceTemplates."
+image: "images/lesson-header.svg"
+image_caption: "Blueprint and Helm chart — the building blocks of custom templates"
 
 sections:
   - title: "Why Custom Templates?"
+    image: "images/section-01-why-custom.svg"
+    image_caption: "Custom templates solve org-specific needs: security, regions, standards"
     explanation: |
       While k0rdent ships with many pre-built templates, you'll often need custom ones:
 
@@ -17,8 +21,11 @@ sections:
     examples:
       - q: "When would you need a custom ClusterTemplate?"
         a: "When you need organization-specific defaults, security hardening, standardized configs, or support for non-standard infrastructure."
+        labels: ["Templates", "k0rdent"]
 
   - title: "ClusterTemplate Structure"
+    image: "images/section-02-structure.svg"
+    image_caption: "ClusterTemplate Helm chart folder structure: Chart.yaml, values.yaml, templates/"
     explanation: |
       A ClusterTemplate wraps a Helm chart with this structure:
 
@@ -40,12 +47,15 @@ sections:
     examples:
       - q: "What's inside a ClusterTemplate Helm chart?"
         a: "Chart.yaml, values.yaml, values.schema.json, and a templates/ directory containing CAPI Kubernetes manifests."
+        labels: ["Templates", "k0rdent"]
         rel:
           - ["Chart.yaml", "Helm chart metadata (name, version, description)"]
           - ["values.yaml", "Default configuration parameters"]
           - ["values.schema.json", "JSON Schema for parameter validation"]
 
   - title: "Modifying an Existing Template"
+    image: "images/section-03-modify.svg"
+    image_caption: "Modify values.yaml → update Chart.yaml → helm package → helm push"
     explanation: |
       The easiest approach is to modify an existing template:
 
@@ -87,6 +97,7 @@ sections:
     examples:
       - q: "How do you identify customizable parameters in a template?"
         a: "Look for {{ .Values.xxx }} references in the templates/ directory — each one corresponds to a parameter in values.yaml."
+        labels: ["Templates", "k0rdent"]
 
       - type: select
         q: "After modifying a template chart, what do you do?"
@@ -99,6 +110,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Registering Custom Templates"
+    image: "images/section-04-register.svg"
+    image_caption: "Register: HelmRepository source → ClusterTemplate CRD → VALID: true"
     explanation: |
       After packaging your chart, register it with k0rdent:
 
@@ -144,8 +157,11 @@ sections:
     examples:
       - q: "What two objects do you need to register a custom template?"
         a: "A Flux source object (HelmRepository, GitRepository, or OCIRepository) and the ClusterTemplate CRD."
+        labels: ["Templates", "k0rdent"]
 
   - title: "Custom ServiceTemplates"
+    image: "images/section-05-service-templates.svg"
+    image_caption: "ServiceTemplate with k8sConstraint and ServiceTemplateChain upgrade paths"
     explanation: |
       Creating custom ServiceTemplates follows a similar pattern:
 
@@ -191,6 +207,7 @@ sections:
     examples:
       - q: "How do you restrict a ServiceTemplate to specific Kubernetes versions?"
         a: "Set spec.k8sConstraint with a semver constraint like '>=1.28.0 <1.32.0'."
+        labels: ["Templates", "Services"]
 
       - type: multiple-choice
         q: "Which helmOptions are available on ServiceTemplates? (Select all)"
@@ -205,6 +222,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Template Validation and Troubleshooting"
+    image: "images/section-06-validation.svg"
+    image_caption: "kubectl get clustertemplate showing VALID: true/false — debug with validationError"
     explanation: |
       If a template shows `VALID: false`, investigate:
 
@@ -228,5 +247,39 @@ sections:
     examples:
       - q: "Your custom template shows VALID: false. What's the first thing to check?"
         a: "Check .status.validationError for the specific error message, then verify the Flux source and installed providers."
+        labels: ["Templates", "k0rdent"]
         rel:
           - ["validationError", "Status field showing why a template failed validation"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-07-check.svg"
+    image_caption: "Test your knowledge of custom templates in k0rdent"
+    explanation: "Test your understanding of custom templates before moving on!"
+    examples:
+      - q: "A custom ClusterTemplate is a Helm chart. What goes in the templates/ directory?"
+        type: input
+        a:
+          - "CAPI manifests"
+          - "CAPI Kubernetes manifests"
+          - "Cluster API resources"
+        labels: ["Quiz"]
+      - q: "After packaging a custom template, what is the correct next step?"
+        type: select
+        options:
+          - text: "Apply it directly with kubectl apply"
+          - text: "Push to a registry, create a Flux source, then create the ClusterTemplate CRD"
+            correct: true
+          - text: "Edit the existing ClusterTemplate in kcm-system"
+          - text: "Restart the management cluster"
+        labels: ["Quiz"]
+      - q: "Which fields are required in a custom ServiceTemplate? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "spec.helm.chartSpec — the chart reference"
+            correct: true
+          - text: "metadata.name — the template name"
+            correct: true
+          - text: "spec.k8sConstraint — always required"
+          - text: "apiVersion and kind"
+            correct: true
+        labels: ["Quiz"]

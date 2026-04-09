@@ -1,10 +1,13 @@
 version: 2
-number: 3
+number: 4
 title: "Verifying & Exploring the Installation"
 description: "Confirm that k0rdent is fully operational by checking pods, templates, and the management object."
-
+image: "images/lesson-header.svg"
+image_caption: "kubectl get pods -n kcm-system showing ~26 running pods"
 sections:
   - title: "Check KCM Pods"
+    image: "images/section-01-kcm-pods.svg"
+    image_caption: "~26 pods running in kcm-system namespace including CAPI and provider controllers"
     explanation: |
       Wait 5-10 minutes after installation, then verify all pods in the `kcm-system` namespace are running:
 
@@ -33,6 +36,7 @@ sections:
     examples:
       - q: "How many pods should be running in kcm-system?"
         a: "Approximately 26 pods, including CAPI controllers, provider controllers, Flux controllers, and cert-manager."
+        labels: ["k0rdent", "Kubernetes"]
         rel:
           - ["kcm-system", "Namespace where all k0rdent control plane components run"]
           - ["CAPI controller", "Core Cluster API controller for cluster lifecycle"]
@@ -45,6 +49,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Check KSM Pods (ProjectSveltos)"
+    image: "images/section-02-ksm-pods.svg"
+    image_caption: "~10 pods running in projectsveltos namespace"
     explanation: |
       k0rdent's State Manager uses ProjectSveltos. Check its pods:
 
@@ -67,6 +73,7 @@ sections:
     examples:
       - q: "What namespace does ProjectSveltos run in?"
         a: "projectsveltos"
+        labels: ["k0rdent", "Services"]
         rel:
           - ["projectsveltos", "Namespace for the KSM/Sveltos service management pods"]
           - ["addon-controller", "Sveltos component that deploys services to child clusters"]
@@ -83,6 +90,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Verify Provider Templates"
+    image: "images/section-03-provider-templates.svg"
+    image_caption: "All ProviderTemplates showing VALID: true"
     explanation: |
       ProviderTemplates define which infrastructure providers are available. Verify they're all valid:
 
@@ -103,6 +112,7 @@ sections:
     examples:
       - q: "What does VALID: true mean for a ProviderTemplate?"
         a: "The template has been successfully validated — its Helm chart is accessible, providers are recognized, and it's ready to use."
+        labels: ["k0rdent", "Templates"]
         rel:
           - ["ProviderTemplate", "CRD that exposes CAPI providers for infrastructure, bootstrap, and control plane operations"]
 
@@ -113,6 +123,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Verify Cluster Templates"
+    image: "images/section-04-cluster-templates.svg"
+    image_caption: "ClusterTemplates for all providers showing VALID: true"
     explanation: |
       ClusterTemplates are blueprints for creating clusters. Check the pre-installed ones:
 
@@ -136,6 +148,7 @@ sections:
     examples:
       - q: "What is a ClusterTemplate?"
         a: "A reusable, immutable blueprint that defines the configuration, components, and characteristics of a Kubernetes cluster."
+        labels: ["k0rdent", "Templates"]
         rel:
           - ["ClusterTemplate", "Immutable blueprint for defining cluster configurations"]
           - ["standalone", "Cluster topology where control plane runs on dedicated nodes"]
@@ -154,6 +167,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Verify the Management Object"
+    image: "images/section-05-management.svg"
+    image_caption: "Management object showing READY: True — k0rdent fully operational"
     explanation: |
       The final check — verify the Management object is ready:
 
@@ -178,6 +193,7 @@ sections:
     examples:
       - q: "What does the Management object represent?"
         a: "The core management-related configuration within k0rdent. READY: True confirms everything is operational."
+        labels: ["k0rdent", "Basics"]
         rel:
           - ["Management", "CRD representing the overall k0rdent management configuration and status"]
 
@@ -189,4 +205,34 @@ sections:
             correct: true
           - text: "Delete the management object"
           - text: "Reboot the server"
+        labels: ["Quiz"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-06-check.svg"
+    image_caption: "Verify your understanding of k0rdent post-installation checks"
+    explanation: "Test your knowledge of verifying a k0rdent installation!"
+    examples:
+      - q: "What command verifies all k0rdent components are running?"
+        type: input
+        a:
+          - "kubectl get pods -n kcm-system"
+        labels: ["Quiz"]
+      - q: "What does VALID: true mean on a ClusterTemplate?"
+        type: select
+        options:
+          - text: "The cluster has been successfully deployed"
+          - text: "The template's Helm chart is accessible and providers are recognized — it's ready to use"
+            correct: true
+          - text: "The template has been used at least once"
+          - text: "The template is currently selected for deployment"
+        labels: ["Quiz"]
+      - q: "Which namespaces contain k0rdent control plane components? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "kcm-system"
+            correct: true
+          - text: "projectsveltos"
+            correct: true
+          - text: "kube-system"
+          - text: "default"
         labels: ["Quiz"]

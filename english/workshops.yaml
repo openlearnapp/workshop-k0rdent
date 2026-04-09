@@ -2,7 +2,8 @@ workshops:
   - folder: k0rdent-workshop
     code: en-US
     title: "k0rdent Workshop"
-    description: "Hands-on workshop for platform engineers and admins. Set up a dev cluster with k0rdent on Hetzner, manage templates, services, and multi-cluster deployments."
+    description: "Hands-on workshop for platform engineers. Set up k0rdent on Hetzner, manage templates, services, and multi-cluster deployments — from zero to production."
     color: "220 45% 92%"
     primaryColor: "220 75% 45%"
+    image: "k0rdent-workshop/thumbnail.svg"
     labels: ["IT", "Kubernetes", "Platform Engineering", "Advanced"]

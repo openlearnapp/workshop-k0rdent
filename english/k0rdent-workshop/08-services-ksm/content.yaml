@@ -1,10 +1,13 @@
 version: 2
-number: 8
+number: 9
 title: "Working with Services (KSM)"
 description: "Deploy and manage applications on child clusters using k0rdent State Manager and ServiceTemplates."
-
+image: "images/lesson-header.svg"
+image_caption: "KSM deploying services to child clusters via ProjectSveltos"
 sections:
   - title: "KSM Overview"
+    image: "images/section-01-ksm-overview.svg"
+    image_caption: "KSM architecture: ProjectSveltos as built-in CD solution"
     explanation: |
       The **k0rdent State Manager (KSM)** provides centralized management for applications deployed to child clusters.
 
@@ -18,6 +21,7 @@ sections:
     examples:
       - q: "What is KSM?"
         a: "k0rdent State Manager — centralized management for applications and services deployed to child clusters."
+        labels: ["Services", "k0rdent"]
         rel:
           - ["KSM", "k0rdent State Manager for service lifecycle management"]
           - ["ProjectSveltos", "Built-in CD solution used by KSM"]
@@ -34,6 +38,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Creating a ServiceTemplate"
+    image: "images/section-02-servicetemplate.svg"
+    image_caption: "HelmRepository + ServiceTemplate creation for nginx-ingress"
     explanation: |
       ServiceTemplates define how applications are deployed. Here's an example for nginx-ingress:
 
@@ -78,6 +84,7 @@ sections:
     examples:
       - q: "What are the two objects needed to create a Helm-based ServiceTemplate?"
         a: "A HelmRepository source object (with k0rdent.mirantis.com/managed label) and the ServiceTemplate itself."
+        labels: ["Services", "Templates"]
 
       - type: input
         q: "What label must source objects have for k0rdent to recognize them?"
@@ -87,6 +94,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Adding Services to a Cluster"
+    image: "images/section-03-add-services.svg"
+    image_caption: "serviceSpec.services array in ClusterDeployment — adding services via patch"
     explanation: |
       Add services to an existing ClusterDeployment using `serviceSpec`:
 
@@ -123,6 +132,7 @@ sections:
     examples:
       - q: "How do you add a service to an existing cluster?"
         a: "Patch the ClusterDeployment's spec.serviceSpec.services array with the service template reference."
+        labels: ["Services", "k0rdent"]
         rel:
           - ["serviceSpec", "Section of ClusterDeployment that defines services to deploy"]
           - ["priority", "Numeric value for conflict resolution — higher numbers win"]
@@ -137,6 +147,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "ServiceTemplate Source Types"
+    image: "images/section-04-source-types.svg"
+    image_caption: "Three ServiceTemplate source types: Helm, Kustomize, Raw resources"
     explanation: |
       ServiceTemplates support three deployment methods:
 
@@ -177,6 +189,7 @@ sections:
     examples:
       - q: "What three deployment methods do ServiceTemplates support?"
         a: "Helm charts, Kustomize, and raw resources (via ConfigMap/Secret)."
+        labels: ["Services", "Templates"]
         rel:
           - ["Kustomize", "Kubernetes-native configuration management using overlays"]
           - ["Raw resources", "Direct Kubernetes manifests in ConfigMap or Secret"]
@@ -194,6 +207,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Checking Service Status"
+    image: "images/section-05-status.svg"
+    image_caption: "kubectl commands to check ServiceTemplate validation and deployment status"
     explanation: |
       Monitor service deployment status:
 
@@ -221,8 +236,11 @@ sections:
     examples:
       - q: "How do you check if a ServiceTemplate is valid?"
         a: "kubectl get servicetemplate -A shows VALID status, or check .status.validationError for errors."
+        labels: ["Services", "CLI"]
 
   - title: "Beach-Head Services"
+    image: "images/section-06-beachhead.svg"
+    image_caption: "Essential beach-head services: ingress, CNI, CSI, cert-manager, monitoring"
     explanation: |
       **Beach-head services** are essential services that make a Kubernetes cluster production-ready:
 
@@ -236,6 +254,7 @@ sections:
     examples:
       - q: "What are beach-head services?"
         a: "Essential Kubernetes services (ingress, CNI, CSI, cert-manager) that make a cluster actually useful for production workloads."
+        labels: ["Services", "k0rdent"]
         rel:
           - ["Beach-head services", "Essential cluster services: ingress, CNI, CSI, cert-manager, monitoring"]
           - ["CNI", "Container Network Interface — networking plugin for Kubernetes"]
@@ -252,4 +271,37 @@ sections:
           - text: "CSI driver"
             correct: true
           - text: "User-facing web apps"
+        labels: ["Quiz"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-07-check.svg"
+    image_caption: "Test your knowledge of KSM and service management in k0rdent"
+    explanation: "Test your understanding of deploying and managing services with KSM!"
+    examples:
+      - q: "What k0rdent component deploys services to child clusters?"
+        type: input
+        a:
+          - "KSM"
+          - "k0rdent State Manager"
+          - "KSM (k0rdent State Manager)"
+        labels: ["Quiz"]
+      - q: "How do you attach a service to a specific cluster in k0rdent?"
+        type: select
+        options:
+          - text: "Create a Helm release directly on the child cluster"
+          - text: "Add the serviceTemplate reference to the ClusterDeployment's serviceSpec"
+            correct: true
+          - text: "SSH into the worker nodes and install the service manually"
+          - text: "Create a ServiceTemplate with the cluster name in metadata"
+        labels: ["Quiz"]
+      - q: "Which source types can ServiceTemplates use? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "HelmRepository"
+            correct: true
+          - text: "GitRepository"
+            correct: true
+          - text: "ConfigMap (raw resources)"
+            correct: true
+          - text: "Terraform state files"
         labels: ["Quiz"]

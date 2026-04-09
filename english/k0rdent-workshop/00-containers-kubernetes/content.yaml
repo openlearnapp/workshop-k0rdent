@@ -1,0 +1,234 @@
+version: 2
+number: 1
+title: "Container & Kubernetes — Why?"
+description: "Understand containers, Docker, Kubernetes, and why k0rdent is needed on top — from absolute zero."
+image: "images/lesson-header.svg"
+image_caption: "Container ship analogy: from Docker containers to Kubernetes orchestration"
+sections:
+  - title: "What is a Container?"
+    image: "images/section-01-containers.svg"
+    image_caption: "A container packages an app with everything it needs to run"
+    explanation: |
+      Imagine you're shipping physical goods. You pack everything into a **standardized shipping container** — it doesn't matter if it goes on a truck, a ship, or a train. The container is the same. Everyone knows how to handle it.
+
+      A **software container** works the same way:
+
+      - It packages your application **together with all its dependencies** (libraries, runtime, config)
+      - It runs the same on your laptop, on a server, or in any cloud
+      - It is **isolated** from other containers — no conflicts between apps
+
+      **Before containers:**
+      - "It works on my machine" was a real problem
+      - Deploying meant: install the right OS, the right runtime, the right libraries — and hope nothing conflicts
+
+      **With containers:**
+      - Build once, run anywhere
+      - Instant start-up (seconds, not minutes)
+      - Easy to scale: just run more containers
+
+      | Without Containers | With Containers |
+      |-------------------|----------------|
+      | "Works on my machine" | Runs everywhere identically |
+      | Slow VM startup (minutes) | Fast startup (seconds) |
+      | Dependency conflicts | Isolated per container |
+      | Hard to scale | Scale by running more |
+    examples:
+      - q: "docker run nginx"
+        a: "Starts an nginx web server inside a container. Downloads the image if not available locally."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["docker-run", "Run a container from an image", "docker run <image>"]
+          - ["nginx", "Popular web server, often used as example container", "image"]
+      - q: "docker ps"
+        a: "Lists all currently running containers — shows container ID, image, status, and ports."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["docker-ps", "List running containers", "docker ps"]
+      - q: "What is the difference between a container and a VM?"
+        a: "VMs virtualize an entire operating system (slow, heavy). Containers share the host OS kernel — they are lightweight, fast, and use far fewer resources."
+        labels: ["Basics"]
+        rel:
+          - ["VM", "Virtual Machine — full OS virtualization", "heavy, minutes to start"]
+          - ["container", "Lightweight process isolation sharing the host OS kernel", "seconds to start"]
+
+  - title: "What is Kubernetes?"
+    image: "images/section-02-kubernetes.svg"
+    image_caption: "Kubernetes as harbour master: orchestrating many containers across many ships"
+    explanation: |
+      You now have containers. But what happens when you have **100 containers across 10 servers**? Who starts them? Who restarts a crashed container? Who distributes traffic?
+
+      That's where **Kubernetes** (often called **K8s**) comes in. Think of it as the **harbour master** who coordinates all the container ships.
+
+      Kubernetes handles:
+      - **Scheduling** — decides which server runs which container
+      - **Self-healing** — restarts crashed containers automatically
+      - **Scaling** — adds/removes containers based on load
+      - **Load balancing** — distributes traffic across containers
+      - **Rolling updates** — updates containers without downtime
+
+      **Key Kubernetes concepts:**
+
+      | Concept | What it is |
+      |---------|------------|
+      | **Pod** | The smallest unit — 1 or more containers running together |
+      | **Node** | A server (physical or virtual) that runs Pods |
+      | **Cluster** | A group of Nodes managed together |
+      | **Deployment** | Defines how many copies of your app to run |
+      | **Service** | A stable network endpoint for your app |
+
+      The **control plane** is the brain — it makes decisions. **Worker nodes** are the muscle — they run your containers.
+    examples:
+      - q: "kubectl get pods"
+        a: "Lists all Pods in the current namespace — shows name, status, restarts, and age."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["kubectl", "Kubernetes CLI tool for interacting with clusters", "command"]
+          - ["Pod", "Smallest deployable unit in Kubernetes — 1+ containers", "concept"]
+      - q: "kubectl get nodes"
+        a: "Lists all Nodes in the cluster — shows name, status, roles, and Kubernetes version."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["Node", "A server (VM or physical) that runs Pods", "concept"]
+          - ["kubectl-get-nodes", "List all cluster nodes", "command"]
+      - q: "What is a Pod?"
+        a: "The smallest deployable unit in Kubernetes. A Pod contains one or more containers that share network and storage."
+        labels: ["Kubernetes"]
+        rel:
+          - ["Pod", "Smallest deployable unit — 1+ containers sharing network/storage", "concept"]
+
+  - title: "Kubernetes Architecture"
+    image: "images/section-03-architecture.svg"
+    image_caption: "Control plane and worker nodes — the two parts of every Kubernetes cluster"
+    explanation: |
+      Every Kubernetes cluster has two types of components:
+
+      **Control Plane** (the brain):
+      - **API Server** — the central hub; all communication goes through it
+      - **etcd** — the database storing all cluster state
+      - **Scheduler** — decides which Node runs each Pod
+      - **Controller Manager** — watches the cluster and ensures desired state
+
+      **Worker Nodes** (the muscle):
+      - **kubelet** — agent on each Node, manages Pods
+      - **kube-proxy** — handles networking and load balancing
+      - **Container runtime** — runs the actual containers (containerd, CRI-O)
+
+      ```
+      ┌─────────────────────────────────┐
+      │         Control Plane           │
+      │  API Server → etcd              │
+      │  Scheduler + Controller Manager │
+      └────────────────┬────────────────┘
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+      ┌────────┐  ┌────────┐  ┌────────┐
+      │ Node 1 │  │ Node 2 │  │ Node 3 │
+      │ Pods   │  │ Pods   │  │ Pods   │
+      └────────┘  └────────┘  └────────┘
+      ```
+
+      In k0rdent, the **management cluster** is itself a Kubernetes cluster that runs k0rdent's control plane. It then provisions and manages **child clusters** — each of which is a full Kubernetes cluster.
+    examples:
+      - q: "kubectl get pods -n kube-system"
+        a: "Lists all control plane component Pods running in the kube-system namespace."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["kube-system", "Namespace for core Kubernetes control plane components", "namespace"]
+          - ["API Server", "Central hub for all Kubernetes API calls", "component"]
+      - q: "What does etcd store?"
+        a: "The entire cluster state — all resource definitions, configurations, and the desired vs actual state of all objects."
+        labels: ["Kubernetes"]
+        rel:
+          - ["etcd", "Distributed key-value store for all Kubernetes cluster state", "component"]
+      - q: "What is the difference between control plane and worker nodes?"
+        a: "The control plane makes decisions (API server, scheduler, etcd). Worker nodes run the actual application Pods."
+        labels: ["Kubernetes"]
+
+  - title: "Why k0rdent on top of Kubernetes?"
+    image: "images/section-04-why-k0rdent.svg"
+    image_caption: "k0rdent manages many Kubernetes clusters — like a fleet manager for clusters"
+    explanation: |
+      Kubernetes solves container orchestration **within one cluster**. But modern organizations run **many clusters** — dev, staging, production, edge, per-team, per-region.
+
+      **The multi-cluster problem:**
+      - Each cluster needs to be provisioned separately
+      - Credentials and access must be managed for each
+      - Services (ingress, monitoring, backups) must be deployed to each
+      - Updates must be rolled out to all clusters
+      - No central view of what's running where
+
+      **k0rdent solves this.** It is a **super control plane** — a Kubernetes cluster that manages other Kubernetes clusters:
+
+      | Problem | k0rdent Solution |
+      |---------|-----------------|
+      | Cluster provisioning | ClusterDeployment + ClusterTemplate |
+      | Credential management | Credential CRD (engineers never see secrets) |
+      | Service deployment | KSM + ServiceTemplates across all clusters |
+      | Updates and lifecycle | Template chains with valid upgrade paths |
+      | Central visibility | Management cluster as single pane of glass |
+
+      **Analogy:** If Kubernetes is a harbour master for one port, k0rdent is the **global shipping authority** managing all ports around the world.
+    examples:
+      - q: "kubectl get clusterdeployments -A"
+        a: "Lists all cluster deployments managed by k0rdent across all namespaces."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["ClusterDeployment", "CRD representing a managed Kubernetes cluster", "k0rdent concept"]
+          - ["k0rdent", "Super control plane for managing many Kubernetes clusters", "platform"]
+      - q: "What is the management cluster in k0rdent?"
+        a: "The Kubernetes cluster where k0rdent itself is installed. It controls all other (child) clusters from a central location."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["Management Cluster", "The cluster where k0rdent is installed and runs", "k0rdent concept"]
+          - ["Child Cluster", "A cluster provisioned and managed by k0rdent", "k0rdent concept"]
+      - q: "What are the three main components of k0rdent?"
+        a: "KCM (Cluster Manager for provisioning), KSM (State Manager for services), and KOF (Observability & FinOps)."
+        labels: ["k0rdent"]
+        rel:
+          - ["KCM", "k0rdent Cluster Manager — deploy and manage cluster lifecycle", "component"]
+          - ["KSM", "k0rdent State Manager — deploy and manage services on clusters", "component"]
+          - ["KOF", "k0rdent Observability & FinOps — metrics, logs, cost", "component"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-05-check.svg"
+    image_caption: "Test your understanding of containers and Kubernetes"
+    explanation: "Test your knowledge before diving into the hands-on setup!"
+    examples:
+      - q: "What command starts an nginx container?"
+        type: input
+        a: "docker run nginx"
+        labels: ["Quiz"]
+      - q: "What is a Pod in Kubernetes?"
+        type: select
+        options:
+          - text: "The smallest deployable unit — 1 or more containers sharing network and storage"
+            correct: true
+          - text: "A physical server running in the cloud"
+          - text: "A storage volume attached to a Node"
+          - text: "A network policy for containers"
+        labels: ["Quiz"]
+      - q: "What command lists all Nodes in a Kubernetes cluster?"
+        type: input
+        a: "kubectl get nodes"
+        labels: ["Quiz"]
+      - q: "Which of these does Kubernetes handle automatically? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "Restarting crashed containers"
+            correct: true
+          - text: "Distributing traffic across containers"
+            correct: true
+          - text: "Writing your application code"
+          - text: "Scheduling Pods to available Nodes"
+            correct: true
+        labels: ["Quiz"]
+      - q: "Why is k0rdent needed if Kubernetes already exists?"
+        type: select
+        options:
+          - text: "Kubernetes cannot run containers without k0rdent"
+          - text: "k0rdent manages many Kubernetes clusters from a single control plane"
+            correct: true
+          - text: "k0rdent replaces Kubernetes entirely"
+          - text: "k0rdent is only needed for Docker containers"
+        labels: ["Quiz"]

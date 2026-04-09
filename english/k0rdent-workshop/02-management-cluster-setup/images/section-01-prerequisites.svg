@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160">
+  <rect width="640" height="160" fill="#0d1117" rx="10" stroke="#58a6ff" stroke-width="1.5" stroke-opacity="0.4"/>
+  <rect x="1" y="1" width="638" height="28" rx="10" fill="#161b22"/>
+  <rect x="1" y="20" width="638" height="9" fill="#161b22"/>
+  <circle cx="18" cy="14" r="5" fill="#f85149" opacity="0.8"/>
+  <circle cx="34" cy="14" r="5" fill="#f0883e" opacity="0.8"/>
+  <circle cx="50" cy="14" r="5" fill="#3fb950" opacity="0.8"/>
+  <text x="320" y="18" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">Prerequisites</text>
+  <text x="24" y="52" font-family="monospace" font-size="11" fill="#3fb950">Hetzner Server Requirements:</text>
+  <text x="24" y="70" font-family="monospace" font-size="10" fill="#58a6ff">  CPU: 4+ cores   RAM: 8+ GB   Disk: 40+ GB</text>
+  <text x="24" y="88" font-family="monospace" font-size="10" fill="#8b949e">  OS: Ubuntu 22.04   SSH: root access</text>
+  <text x="24" y="110" font-family="monospace" font-size="11" fill="#3fb950">Recommended: Hetzner CX31 (2 vCPU, 8GB RAM)</text>
+  <text x="24" y="128" font-family="monospace" font-size="10" fill="#8b949e">$ ssh root@YOUR_SERVER_IP</text>
+  <text x="24" y="144" font-family="monospace" font-size="10" fill="#58a6ff">Welcome to Ubuntu 22.04 LTS</text>
+</svg>

@@ -1,10 +1,13 @@
 version: 2
-number: 1
+number: 2
 title: "Welcome to k0rdent"
 description: "Understand what k0rdent is, why it exists, and its architecture for managing Kubernetes at scale."
-
+image: "images/lesson-header.svg"
+image_caption: "k0rdent management cluster controlling child clusters across providers"
 sections:
   - title: "What is k0rdent?"
+    image: "images/section-01-what-is-k0rdent.svg"
+    image_caption: "k0rdent as super control plane with KCM, KSM, and KOF components"
     explanation: |
       **k0rdent** is a Kubernetes lifecycle management platform — a *super control plane* designed to manage Kubernetes clusters at scale through centralized, template-driven provisioning and lifecycle management.
 
@@ -18,6 +21,7 @@ sections:
     examples:
       - q: "What is k0rdent?"
         a: "A Kubernetes super control plane for centralized, template-driven cluster lifecycle management at scale."
+        labels: ["k0rdent", "Basics"]
         rel:
           - ["k0rdent", "Kubernetes lifecycle management platform (super control plane)"]
           - ["KCM", "k0rdent Cluster Manager — deployment and lifecycle management of clusters"]
@@ -26,6 +30,7 @@ sections:
 
       - q: "What problem does k0rdent solve?"
         a: "It provides a unified platform for provisioning, updating, and managing many Kubernetes clusters across multiple clouds and infrastructures."
+        labels: ["k0rdent", "Basics"]
 
       - type: select
         q: "k0rdent is best described as:"
@@ -38,6 +43,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Why k0rdent?"
+    image: "images/section-02-why.svg"
+    image_caption: "The four challenges k0rdent addresses: complexity, platform engineering, distribution, open source"
     explanation: |
       k0rdent was created to address four key challenges:
 
@@ -48,6 +55,7 @@ sections:
     examples:
       - q: "What are the four reasons k0rdent exists?"
         a: "Application complexity, platform engineering needs, distributed infrastructure management, and open source ecosystem leverage."
+        labels: ["k0rdent", "Basics"]
         rel:
           - ["IDP", "Internal Developer Platform — self-service capabilities for developers"]
           - ["Platform Engineering", "Practice of building and maintaining internal developer platforms"]
@@ -65,6 +73,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Architecture Overview"
+    image: "images/section-03-architecture.svg"
+    image_caption: "k0rdent three-component architecture: KCM, KSM, KOF"
     explanation: |
       k0rdent has three main components:
 
@@ -86,9 +96,11 @@ sections:
     examples:
       - q: "What are the three main components of k0rdent?"
         a: "KCM (Cluster Manager), KSM (State Manager), and KOF (Observability & FinOps)."
+        labels: ["k0rdent", "Basics"]
 
       - q: "What is a management cluster?"
         a: "The Kubernetes cluster where k0rdent is installed, from which all other managed clusters are controlled."
+        labels: ["k0rdent", "Cluster"]
         rel:
           - ["Management Cluster", "The cluster where k0rdent is installed and runs"]
           - ["Child Cluster", "A cluster provisioned and managed by the management cluster"]
@@ -107,6 +119,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Organizational Roles"
+    image: "images/section-04-roles.svg"
+    image_caption: "Three organizational roles: Platform Architect, Lead, and Engineer"
     explanation: |
       k0rdent defines three organizational roles:
 
@@ -120,6 +134,7 @@ sections:
     examples:
       - q: "Who creates reusable templates in k0rdent?"
         a: "The Platform Architect designs abstract platforms and creates reusable templates."
+        labels: ["k0rdent", "Security"]
         rel:
           - ["Platform Architect", "Designs platforms and creates reusable templates"]
           - ["Platform Lead", "Adapts templates, manages access controls and credentials"]
@@ -136,6 +151,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Supported Providers"
+    image: "images/section-05-providers.svg"
+    image_caption: "k0rdent supports AWS, Azure, GCP, vSphere, OpenStack, KubeVirt, and Remote/SSH"
     explanation: |
       k0rdent supports multiple infrastructure providers out of the box:
 
@@ -151,6 +168,7 @@ sections:
     examples:
       - q: "Which provider do we use for Hetzner in k0rdent?"
         a: "The Remote/SSH provider, which deploys k0s clusters to any Linux machine via SSH."
+        labels: ["k0rdent", "Cluster"]
         rel:
           - ["CAPA", "Cluster API Provider for AWS"]
           - ["CAPZ", "Cluster API Provider for Azure"]
@@ -171,4 +189,37 @@ sections:
             correct: true
           - text: "OpenStack"
             correct: true
+        labels: ["Quiz"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-06-check.svg"
+    image_caption: "Test your k0rdent concepts and architecture knowledge"
+    explanation: "Test your understanding of k0rdent before setting up your first cluster!"
+    examples:
+      - q: "What are the three main components of k0rdent?"
+        type: input
+        a:
+          - "KCM, KSM, KOF"
+          - "KCM KSM KOF"
+          - "k0rdent Cluster Manager, State Manager, Observability"
+        labels: ["Quiz"]
+      - q: "k0rdent is best described as:"
+        type: select
+        options:
+          - text: "A Kubernetes distribution like k3s or k0s"
+          - text: "A super control plane for managing many Kubernetes clusters at scale"
+            correct: true
+          - text: "A container runtime like Docker"
+          - text: "A CI/CD pipeline tool"
+        labels: ["Quiz"]
+      - q: "Which of these match k0rdent organizational roles? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "Platform Architect — creates reusable templates"
+            correct: true
+          - text: "Platform Lead — manages credentials and access"
+            correct: true
+          - text: "Platform Engineer — deploys clusters using authorized templates"
+            correct: true
+          - text: "Cluster Root — full admin of all child clusters"
         labels: ["Quiz"]

@@ -1,10 +1,13 @@
 version: 2
-number: 9
+number: 10
 title: "Multi-Cluster Services & Hosted Control Planes"
 description: "Deploy services across multiple clusters simultaneously and understand hosted control plane architecture."
-
+image: "images/lesson-header.svg"
+image_caption: "MultiClusterService deploying to all matching clusters, hosted control planes as pods"
 sections:
   - title: "MultiClusterService Concept"
+    image: "images/section-01-multicluster.svg"
+    image_caption: "MultiClusterService targeting all clusters with environment: dev label"
     explanation: |
       A `MultiClusterService` deploys services across **multiple matching clusters** simultaneously using label selectors:
 
@@ -29,6 +32,7 @@ sections:
     examples:
       - q: "What does MultiClusterService do?"
         a: "Deploys services across multiple clusters simultaneously using label selectors to match target ClusterDeployments."
+        labels: ["Services", "Cluster"]
         rel:
           - ["MultiClusterService", "CRD for deploying services across multiple matching clusters"]
           - ["clusterSelector", "Label matcher that determines which clusters receive the service"]
@@ -44,6 +48,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Setting Cluster Labels"
+    image: "images/section-02-labels.svg"
+    image_caption: "spec.config.clusterLabels in ClusterDeployment for MultiClusterService matching"
     explanation: |
       For MultiClusterService to work, your ClusterDeployments need labels:
 
@@ -72,8 +78,11 @@ sections:
     examples:
       - q: "Where do you set cluster labels for MultiClusterService matching?"
         a: "In spec.config.clusterLabels of the ClusterDeployment."
+        labels: ["Services", "Cluster"]
 
   - title: "Priority and Conflict Resolution"
+    image: "images/section-03-priority.svg"
+    image_caption: "Priority values: higher number wins when multiple services target same cluster"
     explanation: |
       When multiple sources try to deploy different versions of the same service, **priority** resolves conflicts:
 
@@ -92,6 +101,7 @@ sections:
     examples:
       - q: "How does k0rdent resolve conflicting service deployments?"
         a: "Using numeric priority values — higher numbers override lower. Equal priorities resolve first-come-first-served."
+        labels: ["Services", "k0rdent"]
 
       - type: input
         q: "Which wins: a service with priority 100 or priority 200?"
@@ -101,6 +111,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "MultiClusterService Dependencies"
+    image: "images/section-04-dependencies.svg"
+    image_caption: "spec.dependsOn ensures cert-manager deploys before dependent services"
     explanation: |
       Services can depend on other services:
 
@@ -130,10 +142,13 @@ sections:
     examples:
       - q: "How do you ensure cert-manager is deployed before your app across clusters?"
         a: "Use spec.dependsOn in your MultiClusterService to reference the cert-manager MultiClusterService."
+        labels: ["Services", "k0rdent"]
         rel:
           - ["dependsOn", "Field that ensures prerequisite services deploy before dependent ones"]
 
   - title: "Hosted Control Planes"
+    image: "images/section-05-hosted.svg"
+    image_caption: "Hosted control plane: child cluster's control plane runs as pods in management cluster"
     explanation: |
       A **hosted control plane** runs the Kubernetes control plane (API server, etcd, controllers) as pods **inside the management cluster** rather than on dedicated controller nodes:
 
@@ -150,6 +165,7 @@ sections:
     examples:
       - q: "What is a hosted control plane?"
         a: "A deployment where the child cluster's control plane runs as pods in the management cluster instead of on dedicated nodes."
+        labels: ["Cluster", "k0rdent"]
         rel:
           - ["Hosted control plane", "Control plane running as pods in the management cluster"]
           - ["Standalone", "Traditional deployment where control plane runs on dedicated nodes"]
@@ -166,6 +182,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Hosted vs. Standalone"
+    image: "images/section-06-hosted-vs-standalone.svg"
+    image_caption: "Comparison: standalone vs hosted control plane topology"
     explanation: |
       Choosing between hosted and standalone depends on your needs:
 
@@ -186,6 +204,7 @@ sections:
     examples:
       - q: "When would you choose a hosted control plane over standalone?"
         a: "For dev/test environments or when cost optimization is important — hosted control planes use fewer resources."
+        labels: ["Cluster", "k0rdent"]
 
       - type: multiple-choice
         q: "Which are advantages of hosted control planes? (Select all)"
@@ -197,4 +216,36 @@ sections:
             correct: true
           - text: "Centralized control plane management"
             correct: true
+        labels: ["Quiz"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-07-check.svg"
+    image_caption: "Test your knowledge of MultiClusterService and hosted control planes"
+    explanation: "Test your understanding of multi-cluster services and hosted architectures!"
+    examples:
+      - q: "What is the key difference between ClusterDeployment services and MultiClusterService?"
+        type: input
+        a:
+          - "MultiClusterService deploys to many clusters matching a label selector"
+          - "MultiClusterService targets multiple clusters at once"
+          - "MultiClusterService uses label selectors to target many clusters"
+        labels: ["Quiz"]
+      - q: "In a hosted control plane, where does the control plane run?"
+        type: select
+        options:
+          - text: "On dedicated nodes in the child cluster"
+          - text: "As pods inside the management cluster"
+            correct: true
+          - text: "On a separate cloud VM paid for by the user"
+          - text: "In a serverless function"
+        labels: ["Quiz"]
+      - q: "Which are valid use cases for MultiClusterService? (Select all)"
+        type: multiple-choice
+        options:
+          - text: "Deploy monitoring to all production clusters at once"
+            correct: true
+          - text: "Enforce a CNI plugin on every cluster with a specific label"
+            correct: true
+          - text: "Run your application on a single cluster"
+          - text: "Apply security policies across multiple namespaces of the same cluster"
         labels: ["Quiz"]

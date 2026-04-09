@@ -1,30 +1,39 @@
 # Workshop: k0rdent
 
-> **[🌐 Landing Page](https://open-learn.app/workshop-k0rdent/)** · **[🚀 Start Workshop](https://open-learn.app/#/add?source=https://open-learn.app/workshop-k0rdent)**
+> **[🌐 Landing Page](https://open-learn.app/workshop-k0rdent/)** · **[🚀 Start Workshop](https://open-learn.app/#/add?source=https://open-learn.app/workshop-k0rdent/)**
 
-A hands-on workshop for platform engineers and admins. Set up a dev cluster with k0rdent on Hetzner, manage templates, services, and multi-cluster deployments.
+A hands-on workshop for platform engineers and admins — from absolute zero to production. Understand containers and Kubernetes, then set up k0rdent on Hetzner and manage multi-cluster deployments.
 
 ## Content
 
-### 11 Lessons
-1. **Welcome to k0rdent** — Introduction and overview
-2. **Setting Up the Management Cluster on Hetzner** — Bootstrap your first cluster
-3. **Verifying & Exploring the Installation** — Check components and status
-4. **The Templating System** — Understand and use k0rdent templates
-5. **Credentials & Access Management** — Configure access and secrets
-6. **Deploying Your First Cluster** — Create a managed cluster
-7. **Managing Cluster Lifecycle** — Upgrades, scaling, and operations
-8. **Working with Services (KSM)** — Kubernetes Service Manager
-9. **Multi-Cluster Services & Hosted Control Planes** — Advanced topologies
-10. **Creating Custom Templates** — Build your own templates
-11. **Backup, Restore & Observability** — Day-2 operations
+### 12 Lessons
+
+1. **Containers & Kubernetes — Why?** — Start from zero: containers, Docker, Kubernetes basics
+2. **Welcome to k0rdent** — Architecture overview: KCM, KSM, KOF, providers
+3. **Setting Up the Management Cluster on Hetzner** — Bootstrap your first k0rdent cluster
+4. **Verifying & Exploring the Installation** — Check pods, templates, and status
+5. **The Templating System** — ClusterTemplates, ServiceTemplates, ProviderTemplates
+6. **Credentials & Access Management** — Secure credential model and RBAC
+7. **Deploying Your First Cluster** — Deploy a k0s child cluster via Remote/SSH
+8. **Managing Cluster Lifecycle** — Update, drift detection, adopt, tear down
+9. **Working with Services (KSM)** — Deploy apps to child clusters via ServiceTemplates
+10. **Multi-Cluster Services & Hosted Control Planes** — Advanced topologies
+11. **Creating Custom Templates** — Build and publish your own templates
+12. **Backup, Restore & Observability** — Velero backups + KOF monitoring
+
+## Languages
+
+- 🇩🇪 Deutsch
+- 🇬🇧 English
+- 🇮🇷 Farsi (فارسی)
+- 🇸🇦 Arabic (العربية)
 
 ## Labels
 
-`Kubernetes` · `Platform Engineering` · `Advanced`
+`IT` · `Kubernetes` · `Platform Engineering` · `Advanced`
 
 ## Links
 
 - [Open Learn Platform](https://open-learn.app)
-- [Open Learn Repository](https://github.com/openlearnapp/openlearnapp.github.io)
+- [OpenLearn GitHub](https://github.com/openlearnapp)
 - [k0rdent Project](https://k0rdent.io)

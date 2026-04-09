@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160">
+  <rect width="640" height="160" fill="#0d1117" rx="10" stroke="#58a6ff" stroke-width="1.5" stroke-opacity="0.4"/>
+  <rect x="1" y="1" width="638" height="28" rx="10" fill="#161b22"/>
+  <rect x="1" y="20" width="638" height="9" fill="#161b22"/>
+  <circle cx="18" cy="14" r="5" fill="#f85149" opacity="0.8"/>
+  <circle cx="34" cy="14" r="5" fill="#f0883e" opacity="0.8"/>
+  <circle cx="50" cy="14" r="5" fill="#3fb950" opacity="0.8"/>
+  <text x="320" y="18" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">k0rdent Architecture Overview</text>
+
+  <!-- Management Cluster -->
+  <rect x="20" y="38" width="200" height="108" fill="#161b22" stroke="#58a6ff" stroke-width="1.5" rx="4"/>
+  <text x="120" y="55" text-anchor="middle" font-family="monospace" font-size="10" fill="#58a6ff" font-weight="bold">Management Cluster</text>
+  <rect x="30" y="62" width="180" height="20" fill="#21262d" rx="2"/>
+  <text x="120" y="75" text-anchor="middle" font-family="monospace" font-size="9" fill="#3fb950">KCM — Cluster Manager</text>
+  <rect x="30" y="86" width="180" height="20" fill="#21262d" rx="2"/>
+  <text x="120" y="99" text-anchor="middle" font-family="monospace" font-size="9" fill="#f0883e">KSM — State Manager</text>
+  <rect x="30" y="110" width="180" height="20" fill="#21262d" rx="2"/>
+  <text x="120" y="123" text-anchor="middle" font-family="monospace" font-size="9" fill="#bc8cff">KOF — Observability</text>
+  <text x="120" y="140" text-anchor="middle" font-family="monospace" font-size="8" fill="#8b949e">k0rdent installed here</text>
+
+  <!-- Arrows -->
+  <line x1="220" y1="70" x2="310" y2="70" stroke="#30363d" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <line x1="220" y1="100" x2="310" y2="120" stroke="#30363d" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <line x1="220" y1="125" x2="310" y2="140" stroke="#30363d" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+  <!-- Child Clusters -->
+  <rect x="310" y="38" width="100" height="48" fill="#161b22" stroke="#3fb950" stroke-width="1" rx="3"/>
+  <text x="360" y="58" text-anchor="middle" font-family="monospace" font-size="9" fill="#3fb950">dev-cluster</text>
+  <text x="360" y="74" text-anchor="middle" font-family="monospace" font-size="8" fill="#8b949e">k0s · AWS</text>
+
+  <rect x="310" y="95" width="100" height="48" fill="#161b22" stroke="#3fb950" stroke-width="1" rx="3"/>
+  <text x="360" y="115" text-anchor="middle" font-family="monospace" font-size="9" fill="#3fb950">prod-cluster</text>
+  <text x="360" y="131" text-anchor="middle" font-family="monospace" font-size="8" fill="#8b949e">k0s · Hetzner</text>
+
+  <!-- Commands -->
+  <text x="430" y="52" font-family="monospace" font-size="11" fill="#3fb950">$ kubectl get management</text>
+  <text x="430" y="68" font-family="monospace" font-size="10" fill="#8b949e">NAME   READY  RELEASE</text>
+  <text x="430" y="84" font-family="monospace" font-size="10" fill="#58a6ff">kcm    True   kcm-1-8-0</text>
+  <text x="430" y="106" font-family="monospace" font-size="11" fill="#3fb950">$ kubectl get clusters -A</text>
+  <text x="430" y="122" font-family="monospace" font-size="10" fill="#8b949e">NAME        READY</text>
+  <text x="430" y="138" font-family="monospace" font-size="10" fill="#58a6ff">dev-01      True</text>
+</svg>

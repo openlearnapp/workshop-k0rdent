@@ -1,10 +1,13 @@
 version: 2
-number: 5
+number: 6
 title: "Credentials & Access Management"
 description: "Learn how k0rdent manages provider credentials securely and controls access via RBAC."
-
+image: "images/lesson-header.svg"
+image_caption: "Three-layer credential model: Secret → ClusterIdentity → Credential"
 sections:
   - title: "The Credential Model"
+    image: "images/section-01-credential-model.svg"
+    image_caption: "Secret → ClusterIdentity → Credential: engineers never see actual credentials"
     explanation: |
       k0rdent abstracts credential management through a **three-layer model**:
 
@@ -16,6 +19,7 @@ sections:
     examples:
       - q: "Why does k0rdent use a three-layer credential model?"
         a: "To separate credential management from cluster deployment — engineers reference Credential names without accessing actual secrets."
+        labels: ["Security", "k0rdent"]
         rel:
           - ["Secret", "Kubernetes object containing actual provider credentials"]
           - ["ClusterIdentity", "Provider-specific object referencing a Secret"]
@@ -32,6 +36,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "The Four-Step Credential Process"
+    image: "images/section-02-four-step.svg"
+    image_caption: "Four steps from Secret creation to ClusterDeployment reference"
     explanation: |
       **Step 1: Create Secret + ClusterIdentity**
       The platform lead creates the provider-specific Secret (containing actual credentials) and a ClusterIdentity referencing it.
@@ -63,6 +69,7 @@ sections:
     examples:
       - q: "What does a Credential object contain?"
         a: "A reference (identityRef) to a ClusterIdentity object, plus an optional description. It does NOT contain actual credentials."
+        labels: ["Security", "k0rdent"]
 
       - type: input
         q: "In a ClusterDeployment, how do you specify which credentials to use?"
@@ -72,6 +79,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "SSH Credentials for Hetzner (Remote Provider)"
+    image: "images/section-03-ssh.svg"
+    image_caption: "Creating SSH key Secret and Credential for Hetzner remote provider"
     explanation: |
       For our Hetzner workshop, we use SSH key credentials. Here's the setup:
 
@@ -114,6 +123,7 @@ sections:
     examples:
       - q: "How is the SSH private key stored in the Secret?"
         a: "Base64-encoded in the 'value' field of an Opaque Secret."
+        labels: ["Security", "k0rdent"]
         rel:
           - ["remote-ssh-key", "Secret containing the base64-encoded SSH private key"]
           - ["remote-cred", "Credential object for SSH-based remote deployments"]
@@ -128,6 +138,8 @@ sections:
         labels: ["Quiz"]
 
   - title: "Checking Existing Credentials"
+    image: "images/section-04-check.svg"
+    image_caption: "kubectl get credentials listing all namespaces"
     explanation: |
       Before creating new credentials, check what's already available:
 
@@ -143,8 +155,11 @@ sections:
     examples:
       - q: "How do you list all credentials in the cluster?"
         a: "kubectl get credentials --all-namespaces"
+        labels: ["Security", "CLI"]
 
   - title: "RBAC in k0rdent"
+    image: "images/section-05-rbac.svg"
+    image_caption: "AccessManagement CRD controlling template access per namespace"
     explanation: |
       k0rdent provides **Role Based Access Control** following the principle of least privilege:
 
@@ -176,6 +191,7 @@ sections:
     examples:
       - q: "What does AccessManagement control in k0rdent?"
         a: "It defines which templates (via TemplateChains) are available in which namespaces, controlling what each team can deploy."
+        labels: ["Security", "k0rdent"]
         rel:
           - ["AccessManagement", "CRD for defining access rules and resource distribution"]
           - ["AccessRules", "Specify which templates are available in which namespaces"]
@@ -189,4 +205,37 @@ sections:
             correct: true
           - text: "Set filesystem permissions on the template files"
           - text: "Use Kubernetes NetworkPolicies"
+        labels: ["Quiz"]
+
+  - title: "🖥️ Knowledge Check"
+    image: "images/section-06-check.svg"
+    image_caption: "Test your knowledge of k0rdent credentials and access management"
+    explanation: "Test your understanding of how credentials and access work in k0rdent!"
+    examples:
+      - q: "Where is the SSH private key stored when creating a credential for k0rdent?"
+        type: input
+        a:
+          - "In a Kubernetes Secret"
+          - "A Kubernetes Secret"
+          - "In a Secret"
+        labels: ["Quiz"]
+      - q: "Who should have direct access to cloud provider credentials?"
+        type: select
+        options:
+          - text: "All platform engineers who deploy clusters"
+          - text: "Only the platform lead who creates and manages credentials"
+            correct: true
+          - text: "All users of the management cluster"
+          - text: "Nobody — credentials are auto-generated"
+        labels: ["Quiz"]
+      - q: "What does AccessManagement control? (Select all that apply)"
+        type: multiple-choice
+        options:
+          - text: "Which ClusterTemplateChains are available per namespace"
+            correct: true
+          - text: "Which ServiceTemplateChains are available per namespace"
+            correct: true
+          - text: "Which users can SSH into worker nodes"
+          - text: "Which namespaces receive template access"
+            correct: true
         labels: ["Quiz"]
