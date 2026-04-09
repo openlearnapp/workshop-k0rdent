@@ -1,0 +1,241 @@
+version: 2
+number: 6
+title: "إدارة بيانات الاعتماد والوصول"
+description: "تعرّف على كيفية إدارة k0rdent لبيانات اعتماد الموفّرين بشكل آمن والتحكم في الوصول عبر RBAC."
+image: "images/lesson-header.svg"
+image_caption: "نموذج بيانات الاعتماد ثلاثي الطبقات: Secret → ClusterIdentity → Credential"
+sections:
+  - title: "نموذج بيانات الاعتماد"
+    image: "images/section-01-credential-model.svg"
+    image_caption: "Secret → ClusterIdentity → Credential: المهندسون لا يرون بيانات الاعتماد الفعلية أبداً"
+    explanation: |
+      تُجرّد k0rdent إدارة بيانات الاعتماد من خلال **نموذج ثلاثي الطبقات**:
+
+      1. **Secret** — يحتوي على بيانات الاعتماد الفعلية للموفّر (مفاتيح الوصول، مفاتيح SSH، إلخ)
+      2. **ClusterIdentity** — كائن Kubernetes يُشير إلى الـ Secret (خاص بكل موفّر)
+      3. **Credential** — CRD خاص بـ k0rdent يُشير إلى ClusterIdentity ويجعله متاحاً للمهندسين
+
+      يضمن هذا الفصل أن مهندسي المنصة يمكنهم نشر الـ Cluster بالإشارة إلى اسم `Credential` — **دون رؤية بيانات الاعتماد الفعلية أبداً**.
+    examples:
+      - q: "لماذا يستخدم k0rdent نموذج بيانات اعتماد ثلاثي الطبقات؟"
+        a: "لفصل إدارة بيانات الاعتماد عن نشر الـ Cluster — يُشير المهندسون إلى أسماء Credential دون الوصول إلى الأسرار الفعلية."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["Secret", "كائن Kubernetes يحتوي على بيانات الاعتماد الفعلية للموفّر"]
+          - ["ClusterIdentity", "كائن خاص بالموفّر يُشير إلى Secret"]
+          - ["Credential", "CRD لـ k0rdent يُتيح بيانات الاعتماد لنشر الـ Cluster"]
+
+      - type: select
+        q: "من يجب أن يُنشئ كائنات Secret وClusterIdentity؟"
+        options:
+          - text: "أي مهندس في المنصة"
+          - text: "المسؤول الرئيسي للمنصة الذي يمتلك صلاحية الوصول إلى بيانات الاعتماد"
+            correct: true
+          - text: "k0rdent يُنشئها تلقائياً"
+          - text: "مستخدمو الـ Cluster"
+        labels: ["Quiz"]
+
+  - title: "عملية بيانات الاعتماد بأربع خطوات"
+    image: "images/section-02-four-step.svg"
+    image_caption: "أربع خطوات من إنشاء Secret إلى مرجع ClusterDeployment"
+    explanation: |
+      **الخطوة 1: إنشاء Secret + ClusterIdentity**
+      يُنشئ المسؤول الرئيسي للمنصة الـ Secret الخاص بالموفّر (الذي يحتوي على بيانات الاعتماد الفعلية) وClusterIdentity يُشير إليه.
+
+      **الخطوة 2: إنشاء كائن Credential**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: my-aws-cred
+        namespace: kcm-system
+      spec:
+        description: "AWS credentials for dev clusters"
+        identityRef:
+          apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+          kind: AWSClusterStaticIdentity
+          name: aws-cluster-identity
+      ```
+
+      **الخطوة 3: المرجع في ClusterDeployment**
+      يُشير المهندسون إلى اسم Credential فحسب:
+      ```yaml
+      spec:
+        credential: my-aws-cred
+      ```
+
+      **الخطوة 4: نشر بيانات الاعتماد (اختياري)**
+      يمكن نشر بيانات الاعتماد إلى عقد Cluster الأطفال حسب الحاجة.
+    examples:
+      - q: "ما الذي يحتوي عليه كائن Credential؟"
+        a: "مرجع (identityRef) إلى كائن ClusterIdentity، بالإضافة إلى وصف اختياري. لا يحتوي على بيانات الاعتماد الفعلية."
+        labels: ["Security", "k0rdent"]
+
+      - type: input
+        q: "في ClusterDeployment، كيف تُحدد بيانات الاعتماد المراد استخدامها؟"
+        a:
+          - "spec.credential"
+          - "credential"
+        labels: ["Quiz"]
+
+  - title: "بيانات اعتماد SSH لـ Hetzner (موفّر Remote)"
+    image: "images/section-03-ssh.svg"
+    image_caption: "إنشاء SSH key Secret وCredential لموفّر Hetzner Remote"
+    explanation: |
+      في ورشة Hetzner، نستخدم بيانات اعتماد مفتاح SSH. إليك طريقة الإعداد:
+
+      **إنشاء Secret لمفتاح SSH:**
+      ```bash
+      # تعيين المتغيرات
+      KEY_PATH=~/.ssh/id_ed25519
+      PRIVATE_SSH_KEY_B64=$(cat $KEY_PATH | base64 -w 0)
+      ```
+
+      ```yaml
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: remote-ssh-key
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+      type: Opaque
+      data:
+        value: <base64-encoded-private-key>
+      ```
+
+      **إنشاء Credential:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: remote-cred
+        namespace: kcm-system
+      spec:
+        identityRef:
+          apiVersion: v1
+          kind: Secret
+          name: remote-ssh-key
+          namespace: kcm-system
+      ```
+
+      بالنسبة لموفّر Remote/SSH، يُشير Credential مباشرة إلى الـ Secret (دون الحاجة إلى ClusterIdentity وسيط).
+    examples:
+      - q: "كيف يُخزَّن مفتاح SSH الخاص في الـ Secret؟"
+        a: "مُشفَّر بـ Base64 في حقل 'value' لـ Opaque Secret."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["remote-ssh-key", "Secret يحتوي على مفتاح SSH الخاص المُشفَّر بـ Base64"]
+          - ["remote-cred", "كائن Credential للنشر عن بُعد عبر SSH"]
+
+      - type: select
+        q: "هل يحتاج Credential لموفّر Remote/SSH إلى ClusterIdentity؟"
+        options:
+          - text: "نعم، دائماً"
+          - text: "لا — يُشير مباشرة إلى Secret مفتاح SSH"
+            correct: true
+          - text: "فقط للـ Cluster في بيئة الإنتاج"
+        labels: ["Quiz"]
+
+  - title: "فحص بيانات الاعتماد الموجودة"
+    image: "images/section-04-check.svg"
+    image_caption: "kubectl get credentials يسرد جميع مساحات الأسماء"
+    explanation: |
+      قبل إنشاء بيانات اعتماد جديدة، تحقق مما هو متاح بالفعل:
+
+      ```bash
+      # سرد جميع بيانات الاعتماد عبر مساحات الأسماء
+      kubectl get credentials --all-namespaces
+
+      # وصف بيانات اعتماد محددة
+      kubectl describe credential remote-cred -n kcm-system
+      ```
+
+      بيانات الاعتماد محدودة بنطاق مساحة الاسم. مساحة الاسم `kcm-system` هي المكان الذي تُوجد فيه بيانات الاعتماد على مستوى النظام عادةً.
+    examples:
+      - q: "كيف تسرد جميع بيانات الاعتماد في الـ Cluster؟"
+        a: "kubectl get credentials --all-namespaces"
+        labels: ["Security", "CLI"]
+
+  - title: "RBAC في k0rdent"
+    image: "images/section-05-rbac.svg"
+    image_caption: "CRD لـ AccessManagement يتحكم في الوصول إلى القوالب لكل مساحة اسم"
+    explanation: |
+      يوفّر k0rdent **التحكم في الوصول القائم على الأدوار** وفق مبدأ الحد الأدنى من الصلاحيات:
+
+      | المفهوم | الغرض |
+      |---------|---------|
+      | **Roles** | تُعرّف الإجراءات المسموح بها على أي موارد |
+      | **AccessManagement** | CRD يُعرّف قواعد الوصول ومساحات الأسماء المستهدفة |
+      | **AccessRules** | تُحدد القوالب والموارد المتاحة في أي مساحات أسماء |
+      | **TargetNamespaces** | تُعرّف أين يتم توزيع الموارد |
+
+      يتحكم كائن `AccessManagement` في أي كائنات `ClusterTemplateChain` و`ServiceTemplateChain` متاحة في كل مساحة اسم، مما يتحكم فعلياً في الـ Cluster والخدمات التي يمكن لكل فريق نشرها.
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: AccessManagement
+      metadata:
+        name: access-config
+      spec:
+        accessRules:
+          - clusterTemplateChains:
+              - name: aws-standalone-cp
+            serviceTemplateChains:
+              - name: ingress-nginx
+            targetNamespaces:
+              selector:
+                matchLabels:
+                  team: dev
+      ```
+    examples:
+      - q: "ما الذي يتحكم فيه AccessManagement في k0rdent؟"
+        a: "يُعرّف أي قوالب (عبر TemplateChains) متاحة في أي مساحات أسماء، مما يتحكم في ما يمكن لكل فريق نشره."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["AccessManagement", "CRD لتعريف قواعد الوصول وتوزيع الموارد"]
+          - ["AccessRules", "تُحدد أي القوالب متاحة في أي مساحات أسماء"]
+          - ["TargetNamespaces", "تُعرّف مساحات الأسماء التي يتم توزيع الموارد إليها"]
+
+      - type: select
+        q: "كيف تمنع فريقاً من استخدام ClusterTemplates معينة إلا ما تسمح به؟"
+        options:
+          - text: "حذف القوالب التي لا ينبغي لهم استخدامها"
+          - text: "استخدام AccessManagement مع AccessRules تستهدف مساحة اسمهم"
+            correct: true
+          - text: "تعيين صلاحيات نظام الملفات على ملفات القوالب"
+          - text: "استخدام Kubernetes NetworkPolicies"
+        labels: ["Quiz"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-06-check.svg"
+    image_caption: "اختبر معرفتك ببيانات الاعتماد وإدارة الوصول في k0rdent"
+    explanation: "اختبر فهمك لآلية عمل بيانات الاعتماد والوصول في k0rdent!"
+    examples:
+      - q: "أين يُخزَّن مفتاح SSH الخاص عند إنشاء بيانات اعتماد لـ k0rdent؟"
+        type: input
+        a:
+          - "In a Kubernetes Secret"
+          - "A Kubernetes Secret"
+          - "In a Secret"
+        labels: ["Quiz"]
+      - q: "من يجب أن يمتلك وصولاً مباشراً إلى بيانات اعتماد موفّر السحابة؟"
+        type: select
+        options:
+          - text: "جميع مهندسي المنصة الذين ينشرون الـ Cluster"
+          - text: "المسؤول الرئيسي للمنصة فقط الذي يُنشئ بيانات الاعتماد ويديرها"
+            correct: true
+          - text: "جميع مستخدمي Cluster الإدارة"
+          - text: "لا أحد — بيانات الاعتماد تُولَّد تلقائياً"
+        labels: ["Quiz"]
+      - q: "ما الذي يتحكم فيه AccessManagement؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "أي ClusterTemplateChains متاحة لكل مساحة اسم"
+            correct: true
+          - text: "أي ServiceTemplateChains متاحة لكل مساحة اسم"
+            correct: true
+          - text: "من يمكنه الوصول عبر SSH إلى عقد العمال"
+          - text: "مساحات الأسماء التي تتلقى صلاحية الوصول إلى القوالب"
+            correct: true
+        labels: ["Quiz"]

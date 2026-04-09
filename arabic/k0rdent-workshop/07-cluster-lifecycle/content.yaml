@@ -1,0 +1,275 @@
+version: 2
+number: 8
+title: "إدارة دورة حياة الـ Cluster"
+description: "تحديث الـ Cluster، تفعيل كشف الانجراف، استيعاب الـ Cluster الموجودة، وإيقاف تشغيل عمليات النشر."
+image: "images/lesson-header.svg"
+image_caption: "دورة حياة الـ Cluster: التحديث عبر patch القالب، كشف الانجراف، الاستيعاب، وإيقاف التشغيل"
+sections:
+  - title: "تحديث Cluster"
+    image: "images/section-01-update.svg"
+    image_caption: "kubectl patch ClusterDeployment للإشارة إلى إصدار قالب جديد"
+    explanation: |
+      تعتمد k0rdent نهج **القوالب الثابتة** لتحديثات الـ Cluster. بدلاً من تعديل ClusterDeployment مباشرةً، تُغيّر القالب الذي يُشير إليه:
+
+      ```bash
+      kubectl patch clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system \
+        --patch '{"spec":{"template":"remote-cluster-1-0-22"}}' \
+        --type=merge
+      ```
+
+      تكتشف k0rdent تغيير القالب وتُوفّق الـ Cluster تلقائياً لمطابقة الإعداد الجديد.
+
+      **التحقق من التحديث:**
+      ```bash
+      kubectl get clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system
+
+      # حالة تفصيلية
+      kubectl get clusterdeployment.kcm my-hetzner-cluster \
+        -n kcm-system -o=yaml
+      ```
+    examples:
+      - q: "كيف تُحدّث Cluster في k0rdent؟"
+        a: "أجرِ patch على ClusterDeployment للإشارة إلى إصدار ClusterTemplate جديد. تُوفّق k0rdent الـ Cluster تلقائياً."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["Reconciliation", "العملية التي تكتشف فيها k0rdent الفرق بين الحالة المطلوبة والفعلية وتُجري التغييرات اللازمة"]
+
+      - type: select
+        q: "ما الذي يُطلق تحديث Cluster في k0rdent؟"
+        options:
+          - text: "تشغيل أمر kubectl upgrade"
+          - text: "تغيير مرجع القالب في ClusterDeployment"
+            correct: true
+          - text: "إعادة تشغيل Cluster الإدارة"
+          - text: "تعديل ClusterTemplate مباشرةً"
+        labels: ["Quiz"]
+
+  - title: "قيود سلسلة القوالب"
+    image: "images/section-02-chains.svg"
+    image_caption: "ClusterTemplateChain يقيّد إصدارات القوالب التي يمكن الترقية إليها"
+    explanation: |
+      ليست جميع انتقالات القوالب مسموحة. تُعرّف **ClusterTemplateChains** مسارات الترقية الصالحة:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplateChain
+      metadata:
+        name: remote-cluster
+      spec:
+        supportedTemplates:
+          - name: remote-cluster-1-0-22
+          - name: remote-cluster-1-0-19
+            availableUpgrades:
+              - name: remote-cluster-1-0-22
+      ```
+
+      هذا يعني أنه يمكن الترقية من `1-0-19` إلى `1-0-22`، لكن لا يمكن تخطّي الإصدارات أو الرجوع إلى إصدار سابق بشكل اعتباطي.
+
+      التحقق من السلاسل المتاحة:
+      ```bash
+      kubectl get clustertemplatechain -n kcm-system
+      ```
+    examples:
+      - q: "ماذا يحدث إذا حاولت تطبيق patch على ClusterDeployment بقالب غير مدعوم؟"
+        a: "يُرفض التحديث لأن مسار الترقية غير معرّف في ClusterTemplateChain."
+        labels: ["Cluster", "Templates"]
+
+  - title: "كشف الانجراف"
+    image: "images/section-03-drift.svg"
+    image_caption: "وضع ContinuousWithDriftDetection يُصحّح التغييرات غير المصرح بها تلقائياً"
+    explanation: |
+      يراقب كشف الانجراف الموارد المنشورة ويُصحّح التغييرات غير المصرح بها تلقائياً:
+
+      **تفعيل كشف الانجراف** عن طريق ضبط `syncMode` في عملية النشر:
+
+      ```yaml
+      spec:
+        serviceSpec:
+          syncMode: ContinuousWithDriftDetection
+      ```
+
+      **أوضاع المزامنة المتاحة:**
+
+      | الوضع | السلوك |
+      |------|----------|
+      | `OneTime` | نشر مرة واحدة، تجاهل التغييرات اللاحقة |
+      | `Continuous` | النشر وتطبيق تغييرات الإعداد تلقائياً |
+      | `ContinuousWithDriftDetection` | مراقبة الانجراف والتوفيق التلقائي |
+      | `DryRun` | إنشاء تقارير دون تطبيق التغييرات |
+
+      عند اكتشاف الانجراف، يُحدّث drift-detection-manager الخاص بـ k0rdent الـ `ResourceSummary`، مما يُطلق addon-controller لإعادة التوفيق والنشر.
+    examples:
+      - q: "ما وظيفة ContinuousWithDriftDetection؟"
+        a: "يراقب الموارد المنشورة باستخدام قيم hash ويُوفّق تلقائياً أي تغييرات غير مصرح بها إلى الحالة المطلوبة."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["syncMode", "يتحكم في كيفية تعامل k0rdent مع تغييرات الموارد المنشورة"]
+          - ["ContinuousWithDriftDetection", "وضع مزامنة يُصحّح انجراف الإعداد تلقائياً"]
+          - ["ResourceSummary", "كائن يتتبع حالة الموارد لكشف الانجراف"]
+
+      - type: select
+        q: "تريد نشر خدمة مرة واحدة فقط دون تحديثها تلقائياً. أي syncMode تختار؟"
+        options:
+          - text: "Continuous"
+          - text: "OneTime"
+            correct: true
+          - text: "ContinuousWithDriftDetection"
+          - text: "DryRun"
+        labels: ["Quiz"]
+
+  - title: "تجاهل الانجراف والاستثناءات"
+    image: "images/section-04-drift-ignore.svg"
+    image_caption: "driftIgnore وdriftExclusions للتحكم الدقيق في كشف الانجراف"
+    explanation: |
+      في بعض الأحيان تريد استثناء موارد أو حقول معينة من تصحيح الانجراف:
+
+      **تجاهل الانجراف** — استثناء موارد كاملة:
+      ```yaml
+      spec:
+        serviceSpec:
+          driftIgnore:
+            - apiVersion: v1
+              kind: ConfigMap
+              name: my-config
+              namespace: default
+      ```
+
+      الموارد المتجاهلة تحصل على التعليق التوضيحي `projectsveltos.io/driftDetectionIgnore: ok`.
+
+      **استثناءات الانجراف** — استثناء حقول محددة:
+      ```yaml
+      spec:
+        serviceSpec:
+          driftExclusions:
+            - target:
+                kind: Deployment
+                name: my-app
+              paths:
+                - "/spec/replicas"
+      ```
+
+      هذا يسمح لـ HPA بتغيير عدد النسخ دون تشغيل تصحيح الانجراف.
+    examples:
+      - q: "كيف تمنع كشف الانجراف من عكس التغييرات التي يديرها HPA في عدد النسخ؟"
+        a: "استخدم driftExclusions لاستثناء مسار /spec/replicas من كشف الانجراف لذلك الـ Deployment."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["driftIgnore", "يستثني موارد كاملة من تصحيح الانجراف"]
+          - ["driftExclusions", "يستثني مسارات JSON محددة من كشف الانجراف"]
+
+  - title: "استيعاب الـ Cluster الموجودة"
+    image: "images/section-05-adopt.svg"
+    image_caption: "قالب adopted-cluster يجلب الـ Cluster الموجودة تحت إدارة k0rdent"
+    explanation: |
+      يمكنك إحضار Cluster Kubernetes موجودة تحت إدارة k0rdent:
+
+      **المتطلبات المسبقة:**
+      - kubeconfig للـ Cluster المستهدف
+      - اتصال شبكي بين Cluster الإدارة والـ Cluster المستهدف
+
+      **الخطوات:**
+      1. أنشئ Credential للبنية التحتية للـ Cluster المستهدف
+      2. أنشئ ClusterDeployment باستخدام قالب `adopted-cluster`:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterDeployment
+      metadata:
+        name: adopted-production
+        namespace: kcm-system
+      spec:
+        template: adopted-cluster-<version>
+        credential: target-cred
+        dryRun: false
+        config: {}
+      ```
+
+      3. التطبيق والتحقق:
+      ```bash
+      kubectl apply -f adopted-cluster.yaml
+      kubectl get clusterdeployment.kcm adopted-production \
+        -n kcm-system -o=yaml
+      ```
+
+      يمكن الآن مراقبة الـ Cluster المستوعب وإدارته مثل أي Cluster تم نشره بواسطة k0rdent.
+
+      **تلميح:** استخدم `dryRun: true` أولاً للتحقق من الإعداد.
+    examples:
+      - q: "هل تستطيع k0rdent إدارة Cluster لم تُنشئه؟"
+        a: "نعم — باستخدام قالب adopted-cluster، يمكنك إحضار الـ Cluster الموجودة تحت إدارة k0rdent."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["adopted-cluster", "قالب لإحضار الـ Cluster الموجودة تحت إدارة k0rdent"]
+
+      - type: select
+        q: "ما الذي يجب فعله قبل استيعاب Cluster إنتاج؟"
+        options:
+          - text: "حذف الـ Cluster الموجود أولاً"
+          - text: "استخدام dryRun: true للتحقق من الإعداد"
+            correct: true
+          - text: "ترقية الـ Cluster إلى أحدث إصدار"
+          - text: "إزالة جميع أحمال العمل من الـ Cluster"
+        labels: ["Quiz"]
+
+  - title: "إيقاف تشغيل Cluster"
+    image: "images/section-06-teardown.svg"
+    image_caption: "kubectl delete ClusterDeployment — يُلغي تهيئة الـ Cluster ويُنظّف موارد السحابة اختيارياً"
+    explanation: |
+      لحذف Cluster أطفال:
+
+      ```bash
+      kubectl delete ClusterDeployment my-hetzner-cluster -n kcm-system
+      ```
+
+      إذا ضبطت `cleanupOnDeletion: true` في الـ spec، ستقوم k0rdent أيضاً بتنظيف موارد السحابة المتروكة (LoadBalancers، أجهزة التخزين).
+
+      **تحذير:** هذه عملية مدمرة. ستُفقد جميع أحمال العمل على Cluster الأطفال. احرص دائماً على النسخ الاحتياطي للبيانات المهمة أولاً.
+    examples:
+      - q: "ما الذي يحدث لأحمال العمل عند حذف ClusterDeployment؟"
+        a: "تُفقد جميع أحمال العمل على Cluster الأطفال. يُلغى تهيئة الـ Cluster وعقده."
+        labels: ["Cluster", "k0rdent"]
+
+      - type: select
+        q: "ما وظيفة cleanupOnDeletion: true؟"
+        options:
+          - text: "يأخذ نسخة احتياطية من الـ Cluster قبل الحذف"
+          - text: "يُزيل موارد السحابة المتروكة مثل LoadBalancers والتخزين"
+            correct: true
+          - text: "يمنع الحذف العرضي"
+          - text: "ينقل أحمال العمل إلى Cluster آخر"
+        labels: ["Quiz"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-07-check.svg"
+    image_caption: "اختبر معرفتك بإدارة دورة حياة الـ Cluster في k0rdent"
+    explanation: "اختبر فهمك لتحديثات الـ Cluster والانجراف وإيقاف التشغيل!"
+    examples:
+      - q: "كيف تُحدّث Cluster إلى إصدار Kubernetes جديد في k0rdent؟"
+        type: input
+        a:
+          - "Change the template field in ClusterDeployment"
+          - "Update the template reference in ClusterDeployment"
+          - "Edit ClusterDeployment and change the template"
+        labels: ["Quiz"]
+      - q: "ما هو انجراف الإعداد في k0rdent؟"
+        type: select
+        options:
+          - text: "عندما تنتقل عقد الـ Cluster إلى منطقة توافر مختلفة"
+          - text: "عندما تنحرف الحالة الفعلية للـ Cluster عمّا عرّفته k0rdent — يُكتشف ويُبلَّغ عنه تلقائياً"
+            correct: true
+          - text: "عندما يكون Cluster الإدارة غير متزامن مع GitHub"
+          - text: "عندما يكون لـ Cluster-ين نفس الإعداد"
+        labels: ["Quiz"]
+      - q: "أي من عمليات دورة الحياة تدعمها k0rdent؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "تحديث إصدار Kubernetes عبر تغيير القالب"
+            correct: true
+          - text: "استيعاب الـ Cluster الموجودة التي لم تُنشئها k0rdent"
+            correct: true
+          - text: "التوسع التلقائي للعقد بناءً على استخدام CPU"
+          - text: "إيقاف تشغيل الـ Cluster مع تنظيف موارد السحابة اختيارياً"
+            correct: true
+        labels: ["Quiz"]

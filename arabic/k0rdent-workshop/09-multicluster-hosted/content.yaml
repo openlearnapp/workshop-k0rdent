@@ -1,0 +1,251 @@
+version: 2
+number: 10
+title: "الخدمات متعددة الـ Cluster وصفحات التحكم المُستضافة"
+description: "نشر الخدمات عبر Cluster متعددة في آنٍ واحد وفهم معمارية صفحة التحكم المُستضافة."
+image: "images/lesson-header.svg"
+image_caption: "MultiClusterService تنشر على جميع الـ Cluster المطابقة، وصفحات التحكم المُستضافة كـ Pod"
+sections:
+  - title: "مفهوم MultiClusterService"
+    image: "images/section-01-multicluster.svg"
+    image_caption: "MultiClusterService تستهدف جميع الـ Cluster التي تحمل تسمية environment: dev"
+    explanation: |
+      تنشر `MultiClusterService` الخدمات عبر **Cluster متطابقة متعددة** في آنٍ واحد باستخدام محددات التسمية:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: MultiClusterService
+      metadata:
+        name: shared-ingress
+      spec:
+        clusterSelector:
+          matchLabels:
+            environment: dev
+        serviceSpec:
+          services:
+          - template: ingress-nginx-4.11.3
+            name: ingress-nginx
+            namespace: ingress-nginx
+          priority: 100
+      ```
+
+      هذا ينشر ingress-nginx على **كل ClusterDeployment** يحمل التسمية `environment: dev`. عندما تحصل Cluster جديدة على تلك التسمية، تتلقى الخدمة تلقائياً.
+    examples:
+      - q: "ما وظيفة MultiClusterService؟"
+        a: "تنشر الخدمات عبر Cluster متعددة في آنٍ واحد باستخدام محددات التسمية لمطابقة ClusterDeployments المستهدفة."
+        labels: ["Services", "Cluster"]
+        rel:
+          - ["MultiClusterService", "CRD لنشر الخدمات عبر Cluster متطابقة متعددة"]
+          - ["clusterSelector", "محدد التسمية الذي يُحدد أي الـ Cluster تتلقى الخدمة"]
+
+      - type: select
+        q: "Cluster جديدة حصلت على التسمية 'environment: dev'. ماذا يحدث للـ MultiClusterServices المطابقة؟"
+        options:
+          - text: "لا شيء — الـ MultiClusterServices الموجودة لا تؤثر على الـ Cluster الجديدة"
+          - text: "تُنشر الخدمات تلقائياً على الـ Cluster الجديدة"
+            correct: true
+          - text: "يجب على المسؤول تشغيل النشر يدوياً"
+          - text: "يجب إعادة تشغيل الـ Cluster"
+        labels: ["Quiz"]
+
+  - title: "ضبط تسميات الـ Cluster"
+    image: "images/section-02-labels.svg"
+    image_caption: "spec.config.clusterLabels في ClusterDeployment لمطابقة MultiClusterService"
+    explanation: |
+      لكي تعمل MultiClusterService، يجب أن تحمل ClusterDeployments تسميات:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterDeployment
+      metadata:
+        name: my-hetzner-cluster
+        namespace: kcm-system
+      spec:
+        template: remote-cluster-1-0-19
+        credential: remote-cred
+        config:
+          clusterLabels:
+            environment: dev
+            tier: backend
+            region: eu
+      ```
+
+      أو إضافة تسميات إلى Cluster موجودة:
+      ```bash
+      kubectl patch clusterdeployment my-hetzner-cluster \
+        -n kcm-system --type='merge' \
+        -p '{"spec":{"config":{"clusterLabels":{"environment":"dev"}}}}'
+      ```
+    examples:
+      - q: "أين تضبط تسميات الـ Cluster لمطابقة MultiClusterService؟"
+        a: "في spec.config.clusterLabels الخاص بـ ClusterDeployment."
+        labels: ["Services", "Cluster"]
+
+  - title: "الأولوية وحل النزاعات"
+    image: "images/section-03-priority.svg"
+    image_caption: "قيم الأولوية: الرقم الأعلى يفوز عند استهداف Cluster واحدة بخدمات متعددة"
+    explanation: |
+      عندما تحاول مصادر متعددة نشر إصدارات مختلفة من نفس الخدمة، تحل **الأولوية** النزاع:
+
+      ```yaml
+      spec:
+        serviceSpec:
+          priority: 100  # الرقم الأعلى = الأولوية الأعلى
+      ```
+
+      القواعد:
+      - **الأرقام الأعلى تتغلب على الأدنى** — الأولوية 200 تفوز على الأولوية 100
+      - **الأولويات المتساوية** — الأول يُطبَّق أولاً
+      - تنطبق الأولوية على كل خدمة، وليس بشكل عام
+
+      هذا يتيح لك وجود MultiClusterService افتراضية بـ `priority: 100` وتجاوزها لـ Cluster محددة بـ `priority: 200` في ClusterDeployment الخاص بها.
+    examples:
+      - q: "كيف تحل k0rdent نزاعات نشر الخدمات؟"
+        a: "باستخدام قيم الأولوية الرقمية — الأرقام الأعلى تتغلب على الأدنى. الأولويات المتساوية تُحل حسب ترتيب الإنشاء."
+        labels: ["Services", "k0rdent"]
+
+      - type: input
+        q: "أيٌّ يفوز: خدمة بأولوية 100 أم خدمة بأولوية 200؟"
+        a:
+          - "200"
+          - "priority 200"
+        labels: ["Quiz"]
+
+  - title: "تبعيات MultiClusterService"
+    image: "images/section-04-dependencies.svg"
+    image_caption: "spec.dependsOn يضمن نشر cert-manager قبل الخدمات التي تعتمد عليه"
+    explanation: |
+      يمكن أن تعتمد الخدمات على خدمات أخرى:
+
+      **داخل spec الخدمة** — يمكن للخدمات الاعتماد على خدمات أخرى في نفس عملية النشر.
+
+      **بين MultiClusterServices** — استخدم `spec.dependsOn`:
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: MultiClusterService
+      metadata:
+        name: my-app
+      spec:
+        dependsOn:
+          - name: cert-manager-mcs
+          - name: shared-ingress
+        clusterSelector:
+          matchLabels:
+            environment: dev
+        serviceSpec:
+          services:
+          - template: my-app-template
+            name: my-app
+            namespace: default
+      ```
+
+      هذا يضمن نشر cert-manager والـ ingress **قبل** my-app على جميع الـ Cluster المطابقة.
+    examples:
+      - q: "كيف تضمن نشر cert-manager قبل تطبيقك عبر الـ Cluster؟"
+        a: "استخدم spec.dependsOn في MultiClusterService الخاص بك للإشارة إلى MultiClusterService الخاص بـ cert-manager."
+        labels: ["Services", "k0rdent"]
+        rel:
+          - ["dependsOn", "حقل يضمن نشر الخدمات المتطلبة قبل الخدمات التي تعتمد عليها"]
+
+  - title: "صفحات التحكم المُستضافة"
+    image: "images/section-05-hosted.svg"
+    image_caption: "صفحة التحكم المُستضافة: تعمل صفحة تحكم Cluster الأطفال كـ Pod في Cluster الإدارة"
+    explanation: |
+      تُشغّل **صفحة التحكم المُستضافة** صفحة تحكم Kubernetes (API server وetcd ووحدات التحكم) كـ Pod **داخل Cluster الإدارة** بدلاً من عقد تحكم مخصصة:
+
+      **المزايا:**
+      - **تحسين الموارد** — لا حاجة لعقد تحكم مخصصة
+      - **الإدارة المركزية** — صفحات التحكم هي مجرد Pod
+      - **التوسع الديناميكي** — توسيع صفحات التحكم بتعديل موارد الـ Pod
+      - **توفير التكاليف** — خوادم أقل مطلوبة
+
+      **المقايضة:**
+      إذا تعطّل Cluster الإدارة، لن تستطيع إدارة Cluster الأطفال (رغم استمرار تشغيل أحمال العمل).
+
+      تستخدم k0rdent **k0smotron** لتمكين صفحات التحكم المُستضافة عبر جميع الموفّرين المدعومين.
+    examples:
+      - q: "ما صفحة التحكم المُستضافة؟"
+        a: "نشر تعمل فيه صفحة تحكم Cluster الأطفال كـ Pod في Cluster الإدارة بدلاً من عقد مخصصة."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["Hosted control plane", "صفحة التحكم التي تعمل كـ Pod في Cluster الإدارة"]
+          - ["Standalone", "النشر التقليدي حيث تعمل صفحة التحكم على عقد مخصصة"]
+          - ["k0smotron", "الأداة التي تُمكّن صفحات التحكم المُستضافة في k0rdent"]
+
+      - type: select
+        q: "ماذا يحدث لأحمال عمل Cluster الأطفال إذا تعطّل Cluster الإدارة؟"
+        options:
+          - text: "تتوقف أحمال العمل فوراً"
+          - text: "تستمر أحمال العمل في التشغيل لكن لا يمكن إدارتها"
+            correct: true
+          - text: "تنتقل أحمال العمل تلقائياً إلى Cluster آخر"
+          - text: "لا شيء — Cluster الأطفال مستقلة تماماً"
+        labels: ["Quiz"]
+
+  - title: "المُستضافة مقابل المستقلة"
+    image: "images/section-06-hosted-vs-standalone.svg"
+    image_caption: "مقارنة: توبولوجيا صفحة التحكم المستقلة مقابل المُستضافة"
+    explanation: |
+      يعتمد الاختيار بين المُستضافة والمستقلة على احتياجاتك:
+
+      | الجانب | المستقلة | المُستضافة |
+      |--------|-----------|--------|
+      | **صفحة التحكم** | عقد مخصصة | Pod في Cluster الإدارة |
+      | **الاستقلالية** | مكتفية ذاتياً بالكامل | تعتمد على Cluster الإدارة |
+      | **التكلفة** | أعلى (عقد إضافية) | أقل (موارد مشتركة) |
+      | **التوسع** | توسيع العقد | توسيع الـ Pod |
+      | **حالة الاستخدام** | الإنتاج والعزل | التطوير/الاختبار وتحسين التكلفة |
+
+      تُسمَّى قوالب صفحة التحكم المُستضافة بلاحقة `hosted-cp`:
+      ```bash
+      kubectl get clustertemplate -n kcm-system | grep hosted
+      ```
+
+      الموفّرون المدعومون: AWS وAzure وGCP وOpenStack وVMware وKubeVirt.
+    examples:
+      - q: "متى تختار صفحة التحكم المُستضافة بدلاً من المستقلة؟"
+        a: "لبيئات التطوير/الاختبار أو عند أهمية تحسين التكاليف — تستهلك صفحات التحكم المُستضافة موارد أقل."
+        labels: ["Cluster", "k0rdent"]
+
+      - type: multiple-choice
+        q: "أي من هذه مزايا صفحات التحكم المُستضافة؟ (اختر كل ما ينطبق)"
+        options:
+          - text: "تكلفة أقل — لا حاجة لعقد تحكم مخصصة"
+            correct: true
+          - text: "استقلالية كاملة عن Cluster الإدارة"
+          - text: "توسع ديناميكي قائم على الـ Pod"
+            correct: true
+          - text: "إدارة مركزية لصفحة التحكم"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-07-check.svg"
+    image_caption: "اختبر معرفتك بـ MultiClusterService وصفحات التحكم المُستضافة"
+    explanation: "اختبر فهمك للخدمات متعددة الـ Cluster والمعماريات المُستضافة!"
+    examples:
+      - q: "ما الفرق الرئيسي بين خدمات ClusterDeployment وMultiClusterService؟"
+        type: input
+        a:
+          - "MultiClusterService deploys to many clusters matching a label selector"
+          - "MultiClusterService targets multiple clusters at once"
+          - "MultiClusterService uses label selectors to target many clusters"
+        labels: ["Quiz"]
+      - q: "في صفحة التحكم المُستضافة، أين تعمل صفحة التحكم؟"
+        type: select
+        options:
+          - text: "على عقد مخصصة في Cluster الأطفال"
+          - text: "كـ Pod داخل Cluster الإدارة"
+            correct: true
+          - text: "على جهاز افتراضي سحابي منفصل يدفع له المستخدم"
+          - text: "في دالة serverless"
+        labels: ["Quiz"]
+      - q: "أي من هذه حالات استخدام صالحة لـ MultiClusterService؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "نشر المراقبة على جميع Cluster الإنتاج دفعةً واحدة"
+            correct: true
+          - text: "تطبيق إضافة CNI على كل Cluster يحمل تسمية محددة"
+            correct: true
+          - text: "تشغيل تطبيقك على Cluster واحدة"
+          - text: "تطبيق سياسات الأمان عبر مساحات أسماء متعددة في نفس الـ Cluster"
+        labels: ["Quiz"]

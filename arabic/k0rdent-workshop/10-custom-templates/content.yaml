@@ -1,0 +1,285 @@
+version: 2
+number: 11
+title: "إنشاء قوالب مخصصة"
+description: "بناء وتغليف ونشر ClusterTemplates وServiceTemplates المخصصة الخاصة بك."
+image: "images/lesson-header.svg"
+image_caption: "المخطط وHelm chart — لبنات البناء الأساسية للقوالب المخصصة"
+
+sections:
+  - title: "لماذا نحتاج قوالب مخصصة؟"
+    image: "images/section-01-why-custom.svg"
+    image_caption: "القوالب المخصصة تحل الاحتياجات الخاصة بالمؤسسة: الأمان والمناطق والمعايير"
+    explanation: |
+      رغم أن k0rdent تأتي بالعديد من القوالب الجاهزة، ستحتاج في الغالب إلى قوالب مخصصة لأغراض مثل:
+
+      - **الإعدادات الافتراضية الخاصة بالمؤسسة** — أنواع Instance مخصصة والشبكات والمناطق
+      - **تعزيز الأمان** — سياسات أمان مُعدّة مسبقاً
+      - **التوحيد** — فرض إعدادات Cluster متسقة
+      - **الموفّرون المخصصون** — دعم البنية التحتية غير القياسية
+
+      تتبع القوالب المخصصة نفس بنية القوالب المدمجة — إنها Helm charts تحتوي على موارد CAPI.
+    examples:
+      - q: "متى تحتاج إلى ClusterTemplate مخصص؟"
+        a: "عندما تحتاج إلى إعدادات افتراضية خاصة بالمؤسسة، أو تعزيز الأمان، أو إعدادات موحدة، أو دعم بنية تحتية غير قياسية."
+        labels: ["Templates", "k0rdent"]
+
+  - title: "بنية ClusterTemplate"
+    image: "images/section-02-structure.svg"
+    image_caption: "هيكل مجلدات Helm chart لـ ClusterTemplate: Chart.yaml وvalues.yaml وtemplates/"
+    explanation: |
+      يُغلّف ClusterTemplate Helm chart بهذه البنية:
+
+      ```
+      my-custom-template/
+      ├── Chart.yaml          # بيانات Chart الوصفية
+      ├── values.yaml         # المعاملات الافتراضية
+      ├── values.schema.json  # التحقق من صحة المعاملات
+      └── templates/          # Kubernetes manifests لـ CAPI
+          ├── cluster.yaml
+          ├── controlplane.yaml
+          ├── machinedeployment.yaml
+          └── ...
+      ```
+
+      يحتوي مجلد `templates/` على كائنات CAPI (Machine وCluster وMachineDeployment) التي تستخدم `{{ .Values.xxx }}` للمعاملات.
+
+      **نقطة البداية:** استنسخ قالباً موجوداً من [مستودع k0rdent على GitHub](https://github.com/k0rdent/kcm/tree/main/templates/cluster) أو قم بتنزيله من سجل OCI.
+    examples:
+      - q: "ما محتوى Helm chart الخاص بـ ClusterTemplate؟"
+        a: "Chart.yaml وvalues.yaml وvalues.schema.json ومجلد templates/ يحتوي على Kubernetes manifests لـ CAPI."
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["Chart.yaml", "البيانات الوصفية لـ Helm chart (الاسم والإصدار والوصف)"]
+          - ["values.yaml", "معاملات الإعداد الافتراضية"]
+          - ["values.schema.json", "JSON Schema للتحقق من صحة المعاملات"]
+
+  - title: "تعديل قالب موجود"
+    image: "images/section-03-modify.svg"
+    image_caption: "تعديل values.yaml ← تحديث Chart.yaml ← helm package ← helm push"
+    explanation: |
+      أسهل مقاربة هي تعديل قالب موجود:
+
+      **الخطوة 1: فحص الـ chart**
+      افحص كيف يُشار إلى `values.yaml` في القوالب. على سبيل المثال، `.Values.controlPlaneNumber` يتحكم في عدد عقد صفحة التحكم.
+
+      **الخطوة 2: تخصيص values.yaml**
+      ```yaml
+      # values.yaml
+      clusterName: ""
+      controlPlaneNumber: 3
+      workerNumber: 3
+      controlPlane:
+        instanceType: t3.medium
+        rootVolumeSize: 50
+      worker:
+        instanceType: t3.large
+        rootVolumeSize: 100
+      region: eu-central-1
+      ```
+
+      **الخطوة 3: تحديث Chart.yaml**
+      ```yaml
+      apiVersion: v2
+      name: custom-aws-standalone-cp
+      version: 1.0.0
+      description: "Custom AWS standalone with org defaults"
+      annotations:
+        cluster.x-k8s.io/provider: >-
+          infrastructure-aws, control-plane-k0sproject-k0smotron
+      ```
+
+      **الخطوة 4: التغليف والرفع**
+      ```bash
+      helm package ./my-custom-template
+      helm push custom-aws-standalone-cp-1.0.0.tgz \
+        oci://registry.example.com/templates
+      ```
+    examples:
+      - q: "كيف تُحدد المعاملات القابلة للتخصيص في قالب؟"
+        a: "ابحث عن مراجع {{ .Values.xxx }} في مجلد templates/ — كل منها يقابل معاملاً في values.yaml."
+        labels: ["Templates", "k0rdent"]
+
+      - type: select
+        q: "بعد تعديل Helm chart للقالب، ماذا تفعل؟"
+        options:
+          - text: "طبّقه مباشرةً بـ kubectl"
+          - text: "غلّفه بـ helm package وارفعه إلى سجل"
+            correct: true
+          - text: "أعد تشغيل Cluster الإدارة"
+          - text: "عدّل CRD الخاص بـ ClusterTemplate مباشرةً"
+        labels: ["Quiz"]
+
+  - title: "تسجيل القوالب المخصصة"
+    image: "images/section-04-register.svg"
+    image_caption: "التسجيل: مصدر HelmRepository ← CRD للـ ClusterTemplate ← VALID: true"
+    explanation: |
+      بعد تغليف الـ chart، سجّله مع k0rdent:
+
+      **الخطوة 1: إنشاء كائن مصدر Flux:**
+      ```yaml
+      apiVersion: source.toolkit.fluxcd.io/v1
+      kind: HelmRepository
+      metadata:
+        name: custom-repo
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/managed: "true"
+      spec:
+        url: oci://registry.example.com/templates
+        type: oci
+        interval: 10m
+      ```
+
+      **الخطوة 2: إنشاء ClusterTemplate:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterTemplate
+      metadata:
+        name: custom-aws-standalone
+        namespace: kcm-system
+      spec:
+        helm:
+          chartSpec:
+            chart: custom-aws-standalone-cp
+            version: 1.0.0
+            interval: 10m
+            sourceRef:
+              kind: HelmRepository
+              name: custom-repo
+      ```
+
+      **الخطوة 3: التحقق:**
+      ```bash
+      kubectl get clustertemplate custom-aws-standalone -n kcm-system
+      ```
+
+      يجب أن يُظهر `VALID: true` بمجرد جلب الـ chart والتحقق منه.
+    examples:
+      - q: "ما الكائنان اللذان تحتاجهما لتسجيل قالب مخصص؟"
+        a: "كائن مصدر Flux (HelmRepository أو GitRepository أو OCIRepository) وCRD الخاص بـ ClusterTemplate."
+        labels: ["Templates", "k0rdent"]
+
+  - title: "ServiceTemplates المخصصة"
+    image: "images/section-05-service-templates.svg"
+    image_caption: "ServiceTemplate مع k8sConstraint وServiceTemplateChain لمسارات الترقية"
+    explanation: |
+      إنشاء ServiceTemplates المخصصة يتبع نمطاً مشابهاً:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplate
+      metadata:
+        name: my-monitoring-stack-1.0.0
+        namespace: kcm-system
+      spec:
+        k8sConstraint: ">=1.28.0 <1.32.0"
+        helm:
+          chartSpec:
+            chart: kube-prometheus-stack
+            version: 62.3.0
+            interval: 10m0s
+            sourceRef:
+              kind: HelmRepository
+              name: prometheus-community
+        helmOptions:
+          wait: true
+          timeout: 10m
+          createNamespace: true
+      ```
+
+      إضافات رئيسية:
+      - `k8sConstraint` — يضمن نشر الخدمة فقط على الـ Cluster المتوافقة
+      - `helmOptions` — يتحكم في سلوك التثبيت (wait وtimeout وatomic وغيرها)
+
+      **ServiceTemplateChain** لمسارات الترقية:
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ServiceTemplateChain
+      metadata:
+        name: my-monitoring-stack
+      spec:
+        supportedTemplates:
+          - name: my-monitoring-stack-1.0.0
+          - name: my-monitoring-stack-0.9.0
+            availableUpgrades:
+              - name: my-monitoring-stack-1.0.0
+      ```
+    examples:
+      - q: "كيف تقيّد ServiceTemplate بإصدارات Kubernetes محددة؟"
+        a: "اضبط spec.k8sConstraint مع قيد semver مثل '>=1.28.0 <1.32.0'."
+        labels: ["Templates", "Services"]
+
+      - type: multiple-choice
+        q: "أي من helmOptions متاحة في ServiceTemplates؟ (اختر كل ما ينطبق)"
+        options:
+          - text: "wait — انتظر جاهزية الموارد"
+            correct: true
+          - text: "atomic — تراجع عند الفشل"
+            correct: true
+          - text: "autoScale — تفعيل HPA"
+          - text: "createNamespace — إنشاء مساحة الاسم إذا لم تكن موجودة"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "التحقق من القوالب واستكشاف الأخطاء"
+    image: "images/section-06-validation.svg"
+    image_caption: "kubectl get clustertemplate يُظهر VALID: true/false — تصحيح الأخطاء بـ validationError"
+    explanation: |
+      إذا أظهر القالب `VALID: false`، تحقق من المشكلة:
+
+      ```bash
+      # فحص خطأ التحقق
+      kubectl get clustertemplate custom-template \
+        -n kcm-system -o jsonpath='{.status.validationError}'
+
+      # فحص حالة مصدر Flux
+      kubectl get helmrepository custom-repo -n kcm-system
+
+      # فحص تثبيت الموفّرين
+      kubectl get providertemplate -n kcm-system
+      ```
+
+      **المشاكل الشائعة:**
+      - **موفّرون مفقودون** — القالب يُشير إلى موفّرين غير مثبتين
+      - **انتهاكات Schema** — القيم لا تطابق JSON schema
+      - **أخطاء المصدر** — Flux لا يستطيع جلب الـ chart من المستودع
+      - **تعارضات الإصدارات** — إصدارات عقود الموفّر لا تتطابق
+    examples:
+      - q: "قالبك المخصص يُظهر VALID: false. ما أول شيء تفحصه؟"
+        a: "تحقق من .status.validationError لرسالة الخطأ المحددة، ثم تحقق من مصدر Flux والموفّرين المثبتين."
+        labels: ["Templates", "k0rdent"]
+        rel:
+          - ["validationError", "حقل الحالة الذي يُظهر سبب فشل التحقق من القالب"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-07-check.svg"
+    image_caption: "اختبر معرفتك بالقوالب المخصصة في k0rdent"
+    explanation: "اختبر فهمك للقوالب المخصصة قبل المتابعة!"
+    examples:
+      - q: "ClusterTemplate المخصص هو Helm chart. ما الذي يوجد في مجلد templates/؟"
+        type: input
+        a:
+          - "CAPI manifests"
+          - "CAPI Kubernetes manifests"
+          - "Cluster API resources"
+        labels: ["Quiz"]
+      - q: "بعد تغليف قالب مخصص، ما الخطوة الصحيحة التالية؟"
+        type: select
+        options:
+          - text: "طبّقه مباشرةً بـ kubectl apply"
+          - text: "ارفعه إلى سجل، أنشئ مصدر Flux، ثم أنشئ CRD للـ ClusterTemplate"
+            correct: true
+          - text: "عدّل الـ ClusterTemplate الموجود في kcm-system"
+          - text: "أعد تشغيل Cluster الإدارة"
+        labels: ["Quiz"]
+      - q: "أي الحقول مطلوبة في ServiceTemplate مخصص؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "spec.helm.chartSpec — مرجع الـ chart"
+            correct: true
+          - text: "metadata.name — اسم القالب"
+            correct: true
+          - text: "spec.k8sConstraint — مطلوب دائماً"
+          - text: "apiVersion وkind"
+            correct: true
+        labels: ["Quiz"]

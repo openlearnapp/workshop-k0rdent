@@ -1,0 +1,349 @@
+version: 2
+number: 7
+title: "نشر أول Cluster لديك"
+description: "انشر Cluster k0s على خوادم Hetzner باستخدام موفّر Remote/SSH لـ k0rdent."
+image: "images/lesson-header.svg"
+image_caption: "تطبيق ClusterDeployment — k0rdent يُهيئ k0s عبر SSH على Hetzner"
+sections:
+  - title: "نظرة عامة على النشر"
+    image: "images/section-01-overview.svg"
+    image_caption: "عملية نشر Cluster بـ 8 خطوات مع موفّر Remote/SSH"
+    explanation: |
+      يتبع نشر Cluster مع k0rdent **عملية من 8 خطوات**:
+
+      1. إنشاء كائن Credential (تم في الدرس السابق)
+      2. اختيار ClusterTemplate
+      3. إعداد ClusterAuthentication اختيارياً
+      4. كتابة ملف YAML للـ ClusterDeployment
+      5. تطبيق الإعداد
+      6. التحقق من الإنشاء
+      7. مراقبة عملية التهيئة
+      8. استرجاع kubeconfig
+
+      في إعداد Hetzner، سننشر Cluster باستخدام موفّر **remote/SSH** الذي يُثبّت k0s على الأجهزة المستهدفة عبر SSH.
+    examples:
+      - q: "ما الخطوات الـ 8 لنشر Cluster مع k0rdent؟"
+        a: "إنشاء بيانات الاعتماد، اختيار القالب، إعداد المصادقة (اختياري)، كتابة ClusterDeployment YAML، التطبيق، التحقق، المراقبة، واسترجاع kubeconfig."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["ClusterDeployment", "CRD يُمثّل الحالة المطلوبة لـ Cluster مُدار"]
+
+  - title: "تجهيز عقد العمال على Hetzner"
+    image: "images/section-02-worker-nodes.svg"
+    image_caption: "إنشاء 1-2 خادم Hetzner كعقد عمال مع صلاحية وصول SSH"
+    explanation: |
+      أنشئ 1-2 خادم إضافي على Hetzner ستصبح عقد عمال في Cluster الأطفال:
+
+      **المتطلبات:**
+      - نظام تشغيل Linux (يُوصى بـ Ubuntu 22.04)
+      - صلاحية وصول SSH كـ root
+      - اتصال بالإنترنت
+      - اتصال شبكي بـ Cluster الإدارة
+
+      **الخطوات:**
+      1. في Hetzner Cloud Console، أنشئ 1-2 خادم (مثلاً CX21 — 2 vCPU، 4 GB RAM)
+      2. استخدم **نفس مفتاح SSH** المستخدم في Cluster الإدارة
+      3. دوّن عناوين IP العامة لكل عقدة عامل
+
+      ```bash
+      # اختبر الاتصال عبر SSH من Cluster الإدارة
+      ssh root@WORKER_IP_1 "hostname"
+      ssh root@WORKER_IP_2 "hostname"
+      ```
+    examples:
+      - q: "ما متطلبات عقد العمال البعيدة؟"
+        a: "نظام تشغيل Linux، صلاحية وصول SSH كـ root، اتصال بالإنترنت، واتصال شبكي بـ Cluster الإدارة."
+        labels: ["Cluster", "k0rdent"]
+
+      - type: multiple-choice
+        q: "ما الذي يجب أن ينطبق على عقد العمال؟ (اختر كل ما ينطبق)"
+        options:
+          - text: "يجب تفعيل وصول SSH كـ root"
+            correct: true
+          - text: "يجب أن تعمل بنفس توزيعة Linux"
+          - text: "يجب أن تكون متصلة بالإنترنت"
+            correct: true
+          - text: "يجب تثبيت Kubernetes مسبقاً عليها"
+        labels: ["Quiz"]
+
+  - title: "إنشاء بيانات اعتماد SSH"
+    image: "images/section-03-ssh-credential.svg"
+    image_caption: "إنشاء SSH Secret وCredential وConfigMap لقالب الموارد"
+    explanation: |
+      إذا لم تفعل ذلك في الدرس السابق، أنشئ بيانات اعتماد SSH:
+
+      ```bash
+      # تعيين المتغيرات
+      export KEY_PATH=~/.ssh/id_ed25519
+      export PRIVATE_SSH_KEY_B64=$(cat $KEY_PATH | base64 -w 0)
+      export SECRET_NAME=remote-ssh-key
+      export CREDENTIAL_NAME=remote-cred
+      ```
+
+      تطبيق الـ Secret:
+      ```bash
+      cat <<EOF | kubectl apply -f -
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: ${SECRET_NAME}
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+      type: Opaque
+      data:
+        value: ${PRIVATE_SSH_KEY_B64}
+      EOF
+      ```
+
+      تطبيق الـ Credential:
+      ```bash
+      cat <<EOF | kubectl apply -f -
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: Credential
+      metadata:
+        name: ${CREDENTIAL_NAME}
+        namespace: kcm-system
+      spec:
+        identityRef:
+          apiVersion: v1
+          kind: Secret
+          name: ${SECRET_NAME}
+          namespace: kcm-system
+      EOF
+      ```
+
+      إنشاء ConfigMap قالب الموارد المطلوب:
+      ```bash
+      cat <<EOF | kubectl apply -f -
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: remote-ssh-key-resource-template
+        namespace: kcm-system
+        labels:
+          k0rdent.mirantis.com/component: "kcm"
+        annotations:
+          projectsveltos.io/template: "true"
+      EOF
+      ```
+    examples:
+      - q: "لماذا نحتاج إلى ConfigMap اسمه remote-ssh-key-resource-template؟"
+        a: "يطلبه موفّر k0rdent البعيد لاحتياجات القوالب المستقبلية. يحتوي فقط على بيانات وصفية — بدون قيم بيانات فعلية."
+        labels: ["Security", "k0rdent"]
+        rel:
+          - ["remote-ssh-key-resource-template", "ConfigMap مطلوب لإعداد بيانات اعتماد Remote/SSH"]
+
+  - title: "اختيار قالب والنشر"
+    image: "images/section-04-deploy.svg"
+    image_caption: "ملف YAML للـ ClusterDeployment مع قالب remote-cluster وبيانات اعتماد SSH"
+    explanation: |
+      سرد القوالب البعيدة المتاحة:
+      ```bash
+      kubectl get clustertemplate -n kcm-system | grep remote
+      ```
+
+      ابحث عن قالب مثل `remote-cluster-1-0-19`. الآن أنشئ ClusterDeployment:
+
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ClusterDeployment
+      metadata:
+        name: my-hetzner-cluster
+        namespace: kcm-system
+      spec:
+        template: remote-cluster-1-0-19
+        credential: remote-cred
+        propagateCredentials: false
+        config:
+          k0smotron:
+            service:
+              type: NodePort
+          machines:
+          - address: WORKER_IP_1
+            user: root
+            port: 22
+          - address: WORKER_IP_2
+            user: root
+            port: 22
+      ```
+
+      **ملاحظات مهمة:**
+      - استبدل `WORKER_IP_1` و`WORKER_IP_2` بعناوين IP الفعلية
+      - استخدم `NodePort` لـ Hetzner (لا يوجد LoadBalancer مدمج)
+      - استخدم اسم القالب الدقيق من `kubectl get clustertemplate`
+      - يجب أن يمتلك المستخدم صلاحيات root على عقد العمال
+
+      تطبيق:
+      ```bash
+      kubectl apply -f my-hetzner-cluster.yaml
+      ```
+    examples:
+      - q: "لماذا نستخدم NodePort بدلاً من LoadBalancer لـ Hetzner؟"
+        a: "لا تمتلك Hetzner تكاملاً مدمجاً مع LoadBalancer السحابي لـ Kubernetes. يعمل NodePort دون الحاجة إلى أي موفّر سحابي."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["NodePort", "نوع خدمة Kubernetes يكشف عن منفذ على كل عقدة"]
+          - ["LoadBalancer", "نوع خدمة Kubernetes يُهيئ load balancer سحابي"]
+          - ["propagateCredentials", "هل تُنشر بيانات الاعتماد إلى عقد Cluster الأطفال"]
+
+      - type: select
+        q: "ما نوع الخدمة الذي يجب استخدامه لـ k0smotron على Hetzner؟"
+        options:
+          - text: "LoadBalancer"
+          - text: "ClusterIP"
+          - text: "NodePort"
+            correct: true
+          - text: "ExternalName"
+        labels: ["Quiz"]
+
+  - title: "المراقبة والتحقق"
+    image: "images/section-05-monitor.svg"
+    image_caption: "مراقبة تهيئة الـ Cluster عبر kubectl وclusterctl"
+    explanation: |
+      راقب عملية تهيئة الـ Cluster:
+
+      ```bash
+      # مراقبة حالة الـ Cluster
+      kubectl -n kcm-system get clusters.cluster.x-k8s.io \
+        my-hetzner-cluster --watch
+
+      # فحص حالة الأجهزة البعيدة
+      kubectl -n kcm-system get remotemachines.infrastructure.cluster.x-k8s.io \
+        -l helm.toolkit.fluxcd.io/name=my-hetzner-cluster \
+        -o=jsonpath='{.items[*].status}'
+      ```
+
+      المخرجات عند النجاح: `{"ready":true}{"ready":true}`
+
+      للحصول على حالة تفصيلية:
+      ```bash
+      kubectl -n kcm-system get clusterdeployment.kcm \
+        my-hetzner-cluster -o=yaml
+      ```
+
+      يمكنك أيضاً استخدام `clusterctl` للحصول على نظرة عامة مرئية:
+      ```bash
+      clusterctl describe cluster my-hetzner-cluster \
+        -n kcm-system --show-conditions all
+      ```
+    examples:
+      - q: "كيف تتحقق من جاهزية الأجهزة البعيدة؟"
+        a: "kubectl get remotemachines مع محدد التسمية والتحقق من {\"ready\":true} في الحالة."
+        labels: ["Cluster", "CLI"]
+        rel:
+          - ["remotemachines", "CRD يُمثّل الأجهزة البعيدة المُدارة عبر SSH"]
+          - ["clusterctl", "أداة CLI لعمليات Cluster API والتشخيص"]
+
+  - title: "الحصول على Kubeconfig"
+    image: "images/section-06-kubeconfig.svg"
+    image_caption: "استرجاع واستخدام kubeconfig الخاص بـ Cluster الأطفال"
+    explanation: |
+      بمجرد جاهزية الـ Cluster، استرجع kubeconfig:
+
+      ```bash
+      kubectl -n kcm-system get secret \
+        my-hetzner-cluster-kubeconfig \
+        -o jsonpath='{.data.value}' | base64 -d \
+        > my-hetzner-cluster.kubeconfig
+      ```
+
+      التحقق من الاتصال:
+      ```bash
+      KUBECONFIG=my-hetzner-cluster.kubeconfig kubectl get nodes
+      KUBECONFIG=my-hetzner-cluster.kubeconfig kubectl get pods -A
+      ```
+
+      لديك الآن Cluster أطفال يعمل بشكل كامل ومُدار بواسطة k0rdent!
+
+      لسرد جميع الـ Cluster لديك:
+      ```bash
+      kubectl get ClusterDeployments -A
+      ```
+    examples:
+      - q: "أين يُخزَّن kubeconfig الخاص بـ Cluster الأطفال؟"
+        a: "في Secret باسم <cluster-name>-kubeconfig في نفس مساحة الاسم التي يوجد فيها ClusterDeployment."
+        labels: ["Cluster", "CLI"]
+
+      - type: input
+        q: "ما الأمر الذي يسرد جميع ClusterDeployments؟"
+        a:
+          - "kubectl get ClusterDeployments -A"
+          - "kubectl get clusterdeployments -A"
+          - "kubectl get clusterdeployment -A"
+        labels: ["Quiz"]
+
+  - title: "حقول ClusterDeployment الرئيسية"
+    image: "images/section-07-fields.svg"
+    image_caption: "حقول spec لـ ClusterDeployment: template وcredential وdryRun وcleanupOnDeletion"
+    explanation: |
+      فهم spec لـ ClusterDeployment:
+
+      ```yaml
+      spec:
+        template: <template-name>      # أي ClusterTemplate يُستخدم
+        credential: <credential-name>   # أي Credential للمصادقة
+        dryRun: true/false              # محاكاة بدون تهيئة
+        cleanupOnDeletion: true/false   # إزالة الموارد المتروكة عند الحذف
+        config:
+          clusterLabels: {}             # تسميات للـ Cluster
+          region: <region>              # المنطقة المستهدفة
+          controlPlane:
+            instanceType: <type>        # حجم Instance لصفحة التحكم
+          worker:
+            instanceType: <type>        # حجم Instance للعقدة العاملة
+      ```
+
+      **أعلام مفيدة:**
+      - `dryRun: true` — التحقق من الإعداد دون إنشاء الموارد
+      - `cleanupOnDeletion: true` — يُزيل خدمات LoadBalancer وأجهزة التخزين المتروكة عند حذف الـ Cluster
+    examples:
+      - q: "ما وظيفة dryRun: true؟"
+        a: "يُحاكي النشر للتحقق من الإعداد دون تهيئة أي موارد سحابية فعلياً."
+        labels: ["Cluster", "k0rdent"]
+        rel:
+          - ["dryRun", "محاكاة النشر دون تهيئة الموارد"]
+          - ["cleanupOnDeletion", "إزالة الموارد المتروكة عند حذف الـ Cluster"]
+
+      - type: select
+        q: "تريد التحقق من صحة ملف YAML للـ ClusterDeployment قبل إنشاء موارد حقيقية. أي حقل تضبطه؟"
+        options:
+          - text: "validate: true"
+          - text: "dryRun: true"
+            correct: true
+          - text: "testMode: true"
+          - text: "preview: true"
+        labels: ["Quiz"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-08-check.svg"
+    image_caption: "اختبر معرفتك بنشر Cluster Kubernetes مع k0rdent"
+    explanation: "اختبر فهمك لعملية نشر الـ Cluster!"
+    examples:
+      - q: "أين يُخزَّن kubeconfig الخاص بـ Cluster الأطفال بعد النشر؟"
+        type: input
+        a:
+          - "In a Secret named <cluster-name>-kubeconfig"
+          - "A Secret named <cluster-name>-kubeconfig"
+          - "In a Kubernetes Secret"
+        labels: ["Quiz"]
+      - q: "ما وظيفة حقل dryRun في ClusterDeployment؟"
+        type: select
+        options:
+          - text: "يُنشئ الـ Cluster في بيئة اختبار"
+          - text: "يتحقق من الإعداد دون تهيئة موارد حقيقية"
+            correct: true
+          - text: "ينشر Cluster بعقدة واحدة فقط"
+          - text: "يُشغّل فحوصات الصحة على الـ Cluster الموجودة"
+        labels: ["Quiz"]
+      - q: "أي من هذه مطلوبة في spec لـ ClusterDeployment؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "template — الـ ClusterTemplate المراد استخدامه"
+            correct: true
+          - text: "credential — الـ Credential للمصادقة"
+            correct: true
+          - text: "dryRun — مطلوب دائماً"
+          - text: "config — المعاملات الخاصة بالقالب"
+            correct: true
+        labels: ["Quiz"]

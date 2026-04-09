@@ -1,0 +1,329 @@
+version: 2
+number: 12
+title: "النسخ الاحتياطي والاستعادة والمراقبة"
+description: "حماية Cluster الإدارة بنسخ احتياطية Velero ومراقبة الـ Cluster باستخدام KOF."
+image: "images/lesson-header.svg"
+image_caption: "درع النسخ الاحتياطي Velero + مراقبة KOF — حماية بنيتك التحتية في k0rdent"
+
+sections:
+  - title: "لماذا النسخ الاحتياطي مهم؟"
+    image: "images/section-01-why-backup.svg"
+    image_caption: "Cluster الإدارة في المركز — إذا فشل، تفقد القدرة على إدارة جميع Cluster الأطفال"
+    explanation: |
+      Cluster الإدارة هو **قلب بنيتك التحتية**. إذا فشل، تفقد القدرة على إدارة جميع Cluster الأطفال. قدرات النسخ الاحتياطي والاستعادة ضرورية من أجل:
+
+      - **التعافي من الكوارث** — الاستعادة على Cluster إدارة جديد
+      - **التراجع** — التعافي من الترقيات الفاشلة
+      - **الترحيل** — نقل الإدارة إلى بنية تحتية مختلفة
+
+      يدمج k0rdent **Velero** مباشرةً في مخطط Helm الخاص به لعمليات النسخ الاحتياطي.
+    examples:
+      - q: "لماذا يُعدّ النسخ الاحتياطي لـ Cluster الإدارة أمراً بالغ الأهمية؟"
+        a: "يتحكم Cluster الإدارة في جميع Cluster الأطفال. فقدانه يعني فقدان القدرة على إدارة بنيتك التحتية بأكملها."
+        labels: ["Backup", "k0rdent"]
+        rel:
+          - ["Velero", "أداة مفتوحة المصدر للنسخ الاحتياطي واستعادة Cluster Kubernetes"]
+          - ["Disaster Recovery", "استعادة الإدارة على Cluster جديد بعد الفشل"]
+
+      - type: select
+        q: "ما الأداة التي يستخدمها k0rdent للنسخ الاحتياطي والاستعادة؟"
+        options:
+          - text: "etcdctl"
+          - text: "Velero"
+            correct: true
+          - text: "Kasten K10"
+          - text: "Restic standalone"
+        labels: ["Quiz"]
+
+  - title: "بنية النسخ الاحتياطي"
+    image: "images/section-02-architecture.svg"
+    image_caption: "k0rdent يُجدوِل، وVelero ينفّذ — ما يتم نسخه احتياطياً وما لا يتم"
+    explanation: |
+      نظام النسخ الاحتياطي في k0rdent له تقسيم واضح للمسؤوليات:
+
+      | المكوّن | المسؤولية |
+      |-----------|---------------|
+      | **k0rdent** | الجدولة، وتحديد ما يجب نسخه احتياطياً |
+      | **Velero** | تنفيذ النسخ الاحتياطية وإدارة التخزين |
+
+      **ما يتم نسخه احتياطياً:**
+      - جميع كائنات إعداد k0rdent (CRDs والقوالب وبيانات الاعتماد)
+      - تعريفات ClusterDeployment
+      - إعدادات الخدمات
+      - قواعد RBAC وإدارة الوصول
+
+      **ما لا يتم نسخه احتياطياً:**
+      - أحمال عمل Cluster الأطفال (هذه مستقلة)
+      - موارد موفّري السحابة أنفسهم
+    examples:
+      - q: "ما الذي يتم نسخه احتياطياً في نسخة احتياطية لإدارة k0rdent؟"
+        a: "جميع كائنات إعداد k0rdent: CRDs والقوالب وبيانات الاعتماد وClusterDeployments وإعدادات الخدمات وقواعد RBAC."
+        labels: ["Backup", "k0rdent"]
+
+      - type: select
+        q: "هل تُدرَج أحمال عمل Cluster الأطفال في نسخ إدارة احتياطية؟"
+        options:
+          - text: "نعم — يتم نسخ كل شيء احتياطياً"
+          - text: "لا — يتم نسخ إعداد Cluster الإدارة فحسب"
+            correct: true
+          - text: "فقط إذا تم إعدادها صراحةً"
+        labels: ["Quiz"]
+
+  - title: "التحضير للنسخ الاحتياطية"
+    image: "images/section-03-prepare.svg"
+    image_caption: "Secret بيانات اعتماد Velero + إعداد تخزين متوافق مع S3"
+    explanation: |
+      قبل تفعيل النسخ الاحتياطية، قم بإعداد وجهة تخزين لـ Velero:
+
+      1. **اختر موفّر تخزين** — تخزين متوافق مع S3 (AWS S3 أو MinIO أو Hetzner Object Storage وغيرها)
+      2. **أنشئ بيانات اعتماد التخزين** — مفتاح الوصول والسر للتخزين
+      3. **إعداد Velero** — عبر قيم Helm الخاصة بـ k0rdent
+
+      لـ Hetzner، يمكنك استخدام **Hetzner Object Storage** (متوافق مع S3):
+      ```bash
+      # إنشاء Secret بيانات اعتماد لـ Velero
+      kubectl create secret generic velero-credentials \
+        -n kcm-system \
+        --from-literal=aws='[default]
+      aws_access_key_id=YOUR_ACCESS_KEY
+      aws_secret_access_key=YOUR_SECRET_KEY'
+      ```
+    examples:
+      - q: "ما خيارات التخزين التي تعمل مع نظام النسخ الاحتياطي في k0rdent؟"
+        a: "أي تخزين متوافق مع S3: AWS S3 وMinIO وHetzner Object Storage وغيرها."
+        labels: ["Backup", "k0rdent"]
+        rel:
+          - ["S3-compatible storage", "تخزين كائنات متوافق مع AWS S3 API"]
+          - ["Hetzner Object Storage", "تخزين كائنات متوافق مع S3 من Hetzner"]
+
+  - title: "النسخ الاحتياطية المجدوَلة والفورية"
+    image: "images/section-04-schedule.svg"
+    image_caption: "ManagementBackup CRD: مجدوَل (Cron) أو فوري (spec فارغ)"
+    explanation: |
+      يدعم k0rdent وضعَي نسخ احتياطي عبر CRD اسمه `ManagementBackup`:
+
+      **النسخ الاحتياطية المجدوَلة:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ManagementBackup
+      metadata:
+        name: daily-backup
+        namespace: kcm-system
+      spec:
+        schedule: "0 2 * * *"  # يومياً الساعة 2 صباحاً
+      ```
+
+      **النسخ الاحتياطية الفورية:**
+      ```yaml
+      apiVersion: k0rdent.mirantis.com/v1beta1
+      kind: ManagementBackup
+      metadata:
+        name: pre-upgrade-backup
+        namespace: kcm-system
+      spec: {}
+      ```
+
+      تطبيق بـ `kubectl apply -f backup.yaml`.
+
+      **أفضل ممارسة:** أنشئ دائماً نسخة احتياطية قبل ترقية k0rdent أو إجراء تغييرات جوهرية.
+    examples:
+      - q: "كيف تُنشئ نسخة احتياطية يومية الساعة 2 صباحاً؟"
+        a: 'عيّن spec.schedule لتعبير Cron: "0 2 * * *" في كائن ManagementBackup.'
+        labels: ["Backup", "k0rdent"]
+        rel:
+          - ["ManagementBackup", "CRD لإعداد عمليات النسخ الاحتياطي"]
+
+      - type: input
+        q: "ما CRD المستخدم للنسخ الاحتياطية في k0rdent؟"
+        a:
+          - "ManagementBackup"
+        labels: ["Quiz"]
+
+  - title: "الاستعادة من النسخة الاحتياطية"
+    image: "images/section-05-restore.svg"
+    image_caption: "velero backup get → velero restore create — إعادة الاتصال بـ Cluster الأطفال الموجودة"
+    explanation: |
+      تُعيد الاستعادة إنشاء كائنات إعداد k0rdent من نسخة احتياطية **دون إعادة توفير** موارد السحابة:
+
+      **الخطوات:**
+      1. ثبّت Cluster إدارة جديداً مع k0rdent
+      2. أعدّ Velero للوصول إلى تخزين النسخ الاحتياطية
+      3. سرد النسخ الاحتياطية المتاحة:
+         ```bash
+         velero backup get
+         ```
+      4. الاستعادة من نسخة احتياطية محددة:
+         ```bash
+         velero restore create --from-backup <backup-name>
+         ```
+
+      **مهم:** تُعيد الاستعادة ربط k0rdent بـ Cluster الأطفال الموجودة. نظراً لاستمرار وجود موارد السحابة، تُوافق k0rdent وتستأنف الإدارة.
+    examples:
+      - q: "هل تُعيد الاستعادة من النسخة الاحتياطية توفير Cluster الأطفال؟"
+        a: "لا — تُعيد الاستعادة إنشاء كائنات الإعداد. تُعيد k0rdent الاتصال بالـ Cluster الموجودة دون إعادة توفيرها."
+        labels: ["Backup", "k0rdent"]
+
+      - type: select
+        q: "بعد الاستعادة على Cluster إدارة جديد، ما الذي يحدث لـ Cluster الأطفال الموجودة؟"
+        options:
+          - text: "يتم حذفها وإعادة إنشائها"
+          - text: "تُعيد k0rdent الاتصال بها وتستأنف إدارتها"
+            correct: true
+          - text: "تصبح غير مُدارة بشكل دائم"
+          - text: "يجب إعادة استيعابها يدوياً"
+        labels: ["Quiz"]
+
+  - title: "KOF — المراقبة وFinOps"
+    image: "images/section-06-kof.svg"
+    image_caption: "KOF: جامع OpenTelemetry → لوحات Grafana + التنبيهات + إدارة التكاليف"
+    explanation: |
+      يوفّر **KOF (k0rdent Observability & FinOps)** مراقبة على مستوى المؤسسة:
+
+      **البنية:**
+      - مبني على **OpenTelemetry** للمقاييس والسجلات والتتبع الموحّدة
+      - جمع مركزي للبيانات من جميع الـ Cluster المُدارة
+      - لوحات **Grafana** للتصور
+      - إدارة التنبيهات عبر قواعد قابلة للإعداد
+
+      **الميزات الرئيسية:**
+      - مراقبة صحة الـ Cluster
+      - تتبع استخدام الموارد
+      - إدارة التكاليف وFinOps
+      - تجميع السجلات
+      - التتبع الموزع
+      - دعم تعدد المستأجرين
+
+      **التثبيت:**
+      يُثبَّت KOF بشكل منفصل عن KCM وله مخطط Helm الخاص به. يمكن نشره على Cluster الإدارة أو Cluster مراقبة مخصص.
+    examples:
+      - q: "ما هو KOF؟"
+        a: "k0rdent Observability & FinOps — مراقبة على مستوى المؤسسة مبنية على OpenTelemetry مع لوحات Grafana والتنبيهات وإدارة التكاليف."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["KOF", "k0rdent Observability & FinOps للمراقبة وإدارة التكاليف"]
+          - ["OpenTelemetry", "إطار مراقبة موحّد للمقاييس والسجلات والتتبع"]
+          - ["Grafana", "منصة مفتوحة المصدر للتصور ولوحات المعلومات"]
+
+      - type: multiple-choice
+        q: "ما الذي يوفّره KOF؟ (اختر كل ما ينطبق)"
+        options:
+          - text: "جمع مركزي للمقاييس"
+            correct: true
+          - text: "توفير الـ Cluster"
+          - text: "لوحات Grafana"
+            correct: true
+          - text: "إدارة التنبيهات"
+            correct: true
+          - text: "إدارة التكاليف / FinOps"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "إلغاء تثبيت k0rdent"
+    image: "images/section-07-uninstall.svg"
+    image_caption: "ترتيب إلغاء التثبيت: حذف ClusterDeployments → Management → helm uninstall → حذف مساحة الاسم"
+    explanation: |
+      إذا احتجت إلى التنظيف، اتبع هذا التسلسل بالضبط:
+
+      ```bash
+      # 1. إزالة جميع ClusterDeployments أولاً
+      kubectl delete clusterdeployments --all -n kcm-system
+
+      # 2. انتظر حتى يتم إلغاء توفير Cluster الأطفال بالكامل
+      kubectl get clusters.cluster.x-k8s.io -n kcm-system --watch
+
+      # 3. حذف كائن Management
+      kubectl delete management.k0rdent kcm
+
+      # 4. إلغاء تثبيت Helm release
+      helm uninstall kcm -n kcm-system
+
+      # 5. إزالة مساحة الاسم
+      kubectl delete ns kcm-system
+      ```
+
+      **مهم:** اتبع هذا الترتيب! حذف Helm release قبل إزالة ClusterDeployments يمكن أن يُخلّف موارد سحابية متروكة.
+    examples:
+      - q: "لماذا يجب حذف ClusterDeployments قبل إلغاء تثبيت مخطط Helm؟"
+        a: "حذف مخطط Helm أولاً يُزيل وحدات التحكم التي تُنظّف موارد السحابة، مما يُخلّف أجهزة VM وبنية تحتية متروكة."
+        labels: ["k0rdent", "CLI"]
+
+      - type: select
+        q: "ما الترتيب الصحيح لإلغاء التثبيت؟"
+        options:
+          - text: "helm uninstall → حذف مساحة الاسم → حذف ClusterDeployments"
+          - text: "حذف ClusterDeployments → حذف Management → helm uninstall → حذف مساحة الاسم"
+            correct: true
+          - text: "حذف مساحة الاسم → يتم تنظيف كل شيء"
+          - text: "kubectl delete all --all → helm uninstall"
+        labels: ["Quiz"]
+
+  - title: "ملخص ورشة العمل"
+    image: "images/section-08-summary.svg"
+    image_caption: "12 درساً مكتملاً — من الحاويات إلى إدارة Cluster متعددة مع k0rdent"
+    explanation: |
+      تهانينا! لقد أتممت ورشة k0rdent. إليك ما تعلمته:
+
+      | الدرس | الموضوع |
+      |--------|-------|
+      | 1 | مفاهيم k0rdent وبنيته |
+      | 2 | إعداد Cluster إدارة على Hetzner |
+      | 3 | التحقق من التثبيت |
+      | 4 | نظام القوالب (قوالب Cluster/Service/Provider) |
+      | 5 | بيانات الاعتماد وإدارة الوصول |
+      | 6 | نشر الـ Cluster عبر SSH/Remote |
+      | 7 | إدارة دورة حياة الـ Cluster |
+      | 8 | العمل مع الخدمات (KSM) |
+      | 9 | الخدمات متعددة الـ Cluster وصفحات التحكم المستضافة |
+      | 10 | إنشاء قوالب مخصصة |
+      | 11 | النسخ الاحتياطي والاستعادة والمراقبة |
+
+      **الخطوات التالية:**
+      - استكشف [توثيق k0rdent](https://docs.k0rdent.io/v1.8.0/) للتعمق في التفاصيل
+      - جرّب النشر على موفّرين آخرين (AWS وAzure وGCP)
+      - أعدّ KOF للمراقبة الشاملة
+      - ابنِ قوالب مخصصة لمؤسستك
+      - انضم إلى مجتمع k0rdent
+    examples:
+      - q: "أين أجد التوثيق الكامل لـ k0rdent؟"
+        a: "https://docs.k0rdent.io/v1.8.0/"
+        labels: ["k0rdent", "Basics"]
+
+      - type: select
+        q: "أي مكوّن في k0rdent ستستكشفه للاستخدام في بيئة الإنتاج؟"
+        options:
+          - text: "KOF للمراقبة والرصد"
+            correct: true
+          - text: "لا شيء — هذه الورشة تغطي كل شيء"
+          - text: "استبدال k0rdent بأداة مختلفة"
+        labels: ["Quiz"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-09-check.svg"
+    image_caption: "اختبار المعرفة النهائي — النسخ الاحتياطي والمراقبة وختام الورشة"
+    explanation: "اختبر معرفتك بالنسخ الاحتياطي والاستعادة والمراقبة في k0rdent!"
+    examples:
+      - q: "ما CRD الذي تستخدمه لجدولة النسخ الاحتياطية التلقائية في k0rdent؟"
+        type: input
+        a:
+          - "ManagementBackup"
+        labels: ["Quiz"]
+      - q: "بعد استعادة k0rdent على Cluster إدارة جديد، ما الذي يحدث لـ Cluster الأطفال الموجودة؟"
+        type: select
+        options:
+          - text: "يتم حذفها ويجب إعادة نشرها"
+          - text: "تُعيد k0rdent الاتصال بها وتستأنف إدارتها"
+            correct: true
+          - text: "تصبح غير مُدارة بشكل دائم"
+          - text: "يجب إعادة استيعابها يدوياً باستخدام kubectl"
+        labels: ["Quiz"]
+      - q: "أي من هذه يتم نسخه احتياطياً في نسخة إدارة k0rdent؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "تعريفات ClusterDeployment"
+            correct: true
+          - text: "قوالب k0rdent وبيانات الاعتماد"
+            correct: true
+          - text: "أحمال عمل تطبيقات Cluster الأطفال"
+          - text: "قواعد RBAC وإدارة الوصول"
+            correct: true
+        labels: ["Quiz"]
