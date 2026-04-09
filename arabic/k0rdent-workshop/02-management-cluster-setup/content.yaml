@@ -1,0 +1,259 @@
+version: 2
+number: 3
+title: "إعداد Management Cluster على Hetzner"
+description: "توفير خادم Hetzner، تثبيت k0s وkubectl وHelm، ونشر k0rdent لإنشاء Management Cluster."
+image: "images/lesson-header.svg"
+image_caption: "الإعداد خطوة بخطوة: من خادم Hetzner إلى Management Cluster لـ k0rdent"
+sections:
+  - title: "المتطلبات الأساسية"
+    image: "images/section-01-prerequisites.svg"
+    image_caption: "Hetzner Cloud Console — متطلبات الخادم والإعداد"
+    explanation: |
+      قبل أن نبدأ، ستحتاج إلى:
+
+      - حساب **Hetzner Cloud** (أو أي خادم Linux مع وصول SSH كـ root)
+      - خادم بما لا يقل عن **4 نوى CPU، 8 غيغابايت RAM، 40 غيغابايت قرص** (مثل Hetzner CX31 أو CPX31)
+      - **Ubuntu 22.04** أو توزيع Linux مماثل
+      - وصول SSH للخادم
+      - جهاز محلي مع عميل SSH
+
+      **إعداد Hetzner:**
+      1. سجّل الدخول إلى [Hetzner Cloud Console](https://console.hetzner.cloud)
+      2. أنشئ مشروعاً جديداً (مثلاً "k0rdent-workshop")
+      3. أنشئ خادماً: **CX31** (2 vCPU، 8 غيغابايت RAM) أو أكبر، Ubuntu 22.04، أضف مفتاح SSH الخاص بك
+      4. لاحظ عنوان IP العام للخادم
+    examples:
+      - q: "ما هي الحد الأدنى لمتطلبات الخادم لـ Management Cluster في k0rdent؟"
+        a: "على الأقل 4 نوى CPU، 8 غيغابايت RAM، و40 غيغابايت مساحة قرص."
+        labels: ["Basics", "Cluster"]
+        rel:
+          - ["Management Cluster", "Cluster Kubernetes الذي تم تثبيت k0rdent عليه"]
+          - ["Hetzner Cloud", "موفّر سحابة ألماني بخوادم VPS ومخصصة بأسعار معقولة"]
+
+      - type: input
+        q: "ما إصدار Ubuntu الموصى به للـ Management Cluster؟"
+        a:
+          - "22.04"
+          - "Ubuntu 22.04"
+        labels: ["Quiz"]
+
+  - title: "تثبيت Kubernetes (k0s)"
+    image: "images/section-02-k0s.svg"
+    image_caption: "تثبيت k0s — Kubernetes خفيف الوزن معتمد من CNCF"
+    explanation: |
+      اتصل بخادم Hetzner عبر SSH وثبّت k0s — توزيع Kubernetes خفيف الوزن معتمد من CNCF:
+
+      ```bash
+      ssh root@YOUR_SERVER_IP
+      ```
+
+      تثبيت k0s:
+      ```bash
+      curl --proto '=https' --tlsv1.2 -sSf https://get.k0s.sh | sudo sh
+      sudo k0s install controller --enable-worker --no-taints
+      sudo k0s start
+      ```
+
+      الخيار `--enable-worker` يجعل هذه العقدة المفردة تعمل كصفحة تحكم وعامل في آنٍ واحد.
+      الخيار `--no-taints` يسمح لأعباء العمل بالتشغيل على عقدة صفحة التحكم.
+
+      انتظر 2-3 دقائق، ثم تحقق:
+      ```bash
+      sudo k0s kubectl get nodes
+      ```
+
+      يجب أن ترى عقدة واحدة في حالة `Ready`.
+    examples:
+      - q: "ماذا يفعل الخيار --enable-worker؟"
+        a: "يجعل عقدة صفحة التحكم تعمل أيضاً كعقدة عاملة، بحيث يمكن جدولة الـ Pod عليها."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["k0s", "توزيع Kubernetes خفيف الوزن معتمد من CNCF"]
+          - ["--enable-worker", "خيار يجعل وحدة تحكم k0s تعمل أيضاً كعامل"]
+          - ["--no-taints", "خيار يسمح بجدولة أعباء العمل على عقد صفحة التحكم"]
+
+      - type: select
+        q: "لماذا نستخدم --enable-worker و--no-taints لـ Cluster أحادي العقدة؟"
+        options:
+          - text: "لتحسين الأمان"
+          - text: "حتى تتمكن العقدة الواحدة من تشغيل صفحة التحكم وأعباء العمل"
+            correct: true
+          - text: "لتمكين التوافر العالي"
+          - text: "لتعطيل المجدوِل"
+        labels: ["Quiz"]
+
+  - title: "تثبيت kubectl"
+    image: "images/section-03-kubectl.svg"
+    image_caption: "تثبيت وتهيئة kubectl للوصول إلى الـ Cluster"
+    explanation: |
+      ثبّت أداة CLI لـ Kubernetes:
+
+      ```bash
+      sudo apt-get update
+      sudo apt-get install -y apt-transport-https ca-certificates curl gnupg
+
+      curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key \
+        | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+      echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' \
+        | sudo tee /etc/apt/sources.list.d/kubernetes.list
+      sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
+
+      sudo apt-get update
+      sudo apt-get install -y kubectl
+      ```
+
+      هيّئ kubeconfig حتى يتمكن kubectl من الاتصال بـ Cluster k0s الخاص بك:
+
+      ```bash
+      sudo cp /var/lib/k0s/pki/admin.conf KUBECONFIG
+      sudo chmod +r KUBECONFIG
+      export KUBECONFIG=./KUBECONFIG
+      ```
+
+      تحقق:
+      ```bash
+      kubectl get nodes
+      ```
+    examples:
+      - q: "أين يخزّن k0s kubeconfig المسؤول؟"
+        a: "/var/lib/k0s/pki/admin.conf"
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["kubectl", "أداة سطر الأوامر لـ Kubernetes للتفاعل مع الـ Cluster"]
+          - ["kubeconfig", "ملف التهيئة للمصادقة على Cluster Kubernetes"]
+
+      - type: input
+        q: "ما الأمر الذي يتحقق من قدرة kubectl على الاتصال بالـ Cluster؟"
+        a:
+          - "kubectl get nodes"
+        labels: ["Quiz"]
+
+  - title: "تثبيت Helm"
+    image: "images/section-04-helm.svg"
+    image_caption: "تثبيت Helm — مدير حزم Kubernetes"
+    explanation: |
+      Helm هو مدير حزم Kubernetes ويُستخدم لتثبيت k0rdent:
+
+      ```bash
+      curl -fsSL -o get_helm.sh \
+        https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+      chmod 700 get_helm.sh
+      ./get_helm.sh
+      ```
+
+      يثبّت Helm في `/usr/local/bin/helm`. تحقق:
+      ```bash
+      helm version
+      ```
+    examples:
+      - q: "لماذا نحتاج إلى Helm؟"
+        a: "يتم تثبيت k0rdent عبر Helm chart، وHelm يدير نشر المشغّل KCM ومكوّناته الفرعية."
+        labels: ["Basics", "k0rdent"]
+        rel:
+          - ["Helm", "مدير حزم لـ Kubernetes، يُستخدم لتثبيت k0rdent"]
+          - ["Helm chart", "حزمة من موارد Kubernetes المهيَّأة مسبقاً"]
+
+  - title: "تثبيت k0rdent"
+    image: "images/section-05-install-k0rdent.svg"
+    image_caption: "helm install k0rdent — نشر المشغّل KCM"
+    explanation: |
+      الآن ثبّت k0rdent باستخدام Helm chart:
+
+      ```bash
+      helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm \
+        --version 1.8.0 \
+        -n kcm-system \
+        --create-namespace
+      ```
+
+      هذا ينشر **المشغّل KCM**، الذي يقوم تلقائياً بنشر جميع المكوّنات الفرعية بما فيها:
+      - وحدات تحكم CAPI (Cluster API)
+      - وحدات تحكم موفّر البنية التحتية (AWS، Azure، GCP، vSphere، OpenStack)
+      - k0smotron للـ hosted control plane
+      - وحدات تحكم Flux لـ GitOps
+      - ProjectSveltos لإدارة الخدمات
+
+      يستغرق الإعداد الكامل تقريباً **5-10 دقائق**.
+    examples:
+      - q: "ما أمر Helm install لـ k0rdent v1.8.0؟"
+        a: "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0 -n kcm-system --create-namespace"
+        labels: ["k0rdent", "CLI"]
+        rel:
+          - ["kcm-system", "مساحة الاسم التي تُثبَّت فيها مكوّنات k0rdent"]
+          - ["KCM operator", "المشغّل الرئيسي الذي يُشغّل جميع المكوّنات الفرعية لـ k0rdent"]
+
+      - type: select
+        q: "ماذا يفعل المشغّل KCM بعد تثبيت Helm؟"
+        options:
+          - text: "لا شيء — يجب تثبيت كل مكوّن يدوياً"
+          - text: "يُنشئ تلقائياً جميع المكوّنات الفرعية بما فيها CAPI والموفّرون"
+            correct: true
+          - text: "يثبّت لوحة التحكم فقط"
+          - text: "يُنشئ Cluster أطفال على الفور"
+        labels: ["Quiz"]
+
+  - title: "إعداد الوصول عن بُعد"
+    image: "images/section-06-remote-access.svg"
+    image_caption: "تهيئة kubeconfig للوصول عن بُعد إلى kubectl من جهازك المحلي"
+    explanation: |
+      لإدارة الـ Cluster من جهازك المحلي، انسخ الـ kubeconfig:
+
+      ```bash
+      # على الخادم، اعرض الـ kubeconfig
+      sudo cat /var/lib/k0s/pki/admin.conf
+      ```
+
+      انسخ المحتوى إلى جهازك المحلي واحفظه (مثلاً `~/.kube/k0rdent-config`). ثم استبدل `localhost` بعنوان IP العام للخادم:
+
+      ```bash
+      # على جهازك المحلي
+      export KUBECONFIG=~/.kube/k0rdent-config
+      sed -i 's/localhost/YOUR_SERVER_IP/g' ~/.kube/k0rdent-config
+      sed -i 's/127.0.0.1/YOUR_SERVER_IP/g' ~/.kube/k0rdent-config
+
+      kubectl get nodes
+      ```
+
+      تأكد من إمكانية الوصول إلى المنفذ **6443** (تحقق من إعدادات جدار الحماية في Hetzner).
+    examples:
+      - q: "على أي منفذ يستمع خادم API لـ Kubernetes؟"
+        a: "المنفذ 6443."
+        labels: ["Basics", "Kubernetes"]
+
+      - q: "كيف تهيّئ وصول kubectl عن بُعد؟"
+        a: "انسخ الـ kubeconfig من الخادم، استبدل localhost بعنوان IP العام للخادم، واضبط متغير البيئة KUBECONFIG."
+        labels: ["Basics", "CLI"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-07-check.svg"
+    image_caption: "اختبر معرفتك بإعداد Management Cluster لـ k0rdent"
+    explanation: "اختبر فهمك لعملية الإعداد قبل المتابعة!"
+    examples:
+      - q: "ما أمر Helm install لتثبيت k0rdent v1.8.0؟"
+        type: input
+        a:
+          - "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0 -n kcm-system --create-namespace"
+          - "helm install kcm oci://ghcr.io/k0rdent/kcm/charts/kcm --version 1.8.0"
+        labels: ["Quiz"]
+      - q: "ماذا يفعل الخيار --enable-worker عند تثبيت k0s؟"
+        type: select
+        options:
+          - text: "يُمكّن لوحة تحكم Kubernetes"
+          - text: "يجعل عقدة صفحة التحكم تعمل أيضاً كعامل، مما يسمح بجدولة الـ Pod عليها"
+            correct: true
+          - text: "يُمكّن وضع التوافر العالي"
+          - text: "يُعطّل جميع سياسات الأمان"
+        labels: ["Quiz"]
+      - q: "أي الأدوات يجب تثبيتها قبل k0rdent؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "k0s (Kubernetes)"
+            correct: true
+          - text: "kubectl"
+            correct: true
+          - text: "Helm"
+            correct: true
+          - text: "Docker Desktop"
+        labels: ["Quiz"]

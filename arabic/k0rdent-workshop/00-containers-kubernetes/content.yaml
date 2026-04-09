@@ -1,0 +1,234 @@
+version: 2
+number: 1
+title: "الحاويات و Kubernetes — لماذا؟"
+description: "افهم الحاويات، Docker، Kubernetes، ولماذا نحتاج إلى k0rdent فوقها — من الصفر."
+image: "images/lesson-header.svg"
+image_caption: "تشبيه سفينة الحاويات: من حاويات Docker إلى تنسيق Kubernetes"
+sections:
+  - title: "ما هي الحاوية؟"
+    image: "images/section-01-containers.svg"
+    image_caption: "الحاوية تحزم تطبيقاً مع كل ما يحتاجه للتشغيل"
+    explanation: |
+      تخيل أنك تشحن بضائع مادية. تضع كل شيء في **حاوية شحن موحدة** — لا يهم إذا كانت على شاحنة أو سفينة أو قطار. الحاوية هي نفسها. الجميع يعرف كيفية التعامل معها.
+
+      **حاوية البرمجيات** تعمل بنفس الطريقة:
+
+      - تحزم تطبيقك **مع جميع تبعياته** (مكتبات، وقت التشغيل، الإعداد)
+      - تعمل بنفس الطريقة على الكمبيوتر المحمول أو الخادم أو أي سحابة
+      - **معزولة** عن الحاويات الأخرى — لا تعارض بين التطبيقات
+
+      **قبل الحاويات:**
+      - "يعمل على جهازي" كانت مشكلة حقيقية
+      - النشر يعني: تثبيت نظام التشغيل الصحيح، وقت التشغيل الصحيح، المكتبات الصحيحة
+
+      **مع الحاويات:**
+      - ابنِ مرة واحدة، شغّل في أي مكان
+      - تشغيل فوري (ثوانٍ، لا دقائق)
+      - سهل التوسع: فقط شغّل المزيد من الحاويات
+
+      | بدون حاويات | مع حاويات |
+      |----------------|----------------|
+      | "يعمل على جهازي" | يعمل في كل مكان بشكل متطابق |
+      | بدء تشغيل بطيء للـ VM (دقائق) | بدء تشغيل سريع (ثوانٍ) |
+      | تعارض التبعيات | معزولة لكل حاوية |
+      | صعب التوسع | التوسع بتشغيل المزيد |
+    examples:
+      - q: "docker run nginx"
+        a: "يشغّل خادم ويب nginx داخل حاوية. يقوم بتنزيل الصورة إذا لم تكن متاحة محلياً."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["docker-run", "تشغيل حاوية من صورة", "docker run <image>"]
+          - ["nginx", "خادم ويب شائع، يُستخدم كثيراً كمثال للحاوية", "image"]
+      - q: "docker ps"
+        a: "يسرد جميع الحاويات قيد التشغيل — يُظهر معرّف الحاوية والصورة والحالة والمنافذ."
+        labels: ["Basics", "Kubernetes"]
+        rel:
+          - ["docker-ps", "سرد الحاويات قيد التشغيل", "docker ps"]
+      - q: "ما الفرق بين الحاوية والـ VM؟"
+        a: "الـ VM تُحاكي نظام تشغيل كاملاً (بطيء، ثقيل). الحاويات تشترك في نواة نظام التشغيل المضيف — خفيفة، سريعة، وتستخدم موارد أقل بكثير."
+        labels: ["Basics"]
+        rel:
+          - ["VM", "جهاز افتراضي — محاكاة نظام تشغيل كامل", "ثقيل، دقائق للبدء"]
+          - ["container", "عزل خفيف للعمليات يشترك في نواة نظام التشغيل المضيف", "ثوانٍ للبدء"]
+
+  - title: "ما هو Kubernetes؟"
+    image: "images/section-02-kubernetes.svg"
+    image_caption: "Kubernetes كقائد الميناء: ينسق العديد من الحاويات عبر العديد من السفن"
+    explanation: |
+      لديك الآن حاويات. لكن ماذا يحدث عندما يكون لديك **100 حاوية عبر 10 خوادم**؟ من يشغّلها؟ من يُعيد تشغيل حاوية تعطّلت؟ من يوزع حركة المرور؟
+
+      هنا يأتي **Kubernetes** (يُسمى في الغالب **K8s**). فكّر فيه كـ **قائد الميناء** الذي ينسق جميع سفن الحاويات.
+
+      يتولى Kubernetes:
+      - **الجدولة** — يقرر أي خادم يشغّل أي حاوية
+      - **الإصلاح الذاتي** — يُعيد تشغيل الحاويات المتعطّلة تلقائياً
+      - **التوسع** — يضيف/يزيل الحاويات بناءً على الحمل
+      - **موازنة الحمل** — يوزع حركة المرور عبر الحاويات
+      - **التحديثات المتدرجة** — يُحدّث الحاويات دون توقف
+
+      **مفاهيم Kubernetes الرئيسية:**
+
+      | المفهوم | ما هو |
+      |---------|------------|
+      | **Pod** | الوحدة الأصغر — حاوية أو أكثر تعمل معاً |
+      | **Node** | خادم (مادي أو افتراضي) يشغّل الـ Pod |
+      | **Cluster** | مجموعة من الـ Node تُدار معاً |
+      | **Deployment** | يُحدد كم نسخة من تطبيقك تعمل |
+      | **Service** | نقطة نهاية شبكة مستقرة لتطبيقك |
+
+      **صفحة التحكم** هي الدماغ — تتخذ القرارات. **عقد العمال** هي العضلات — تشغّل حاوياتك.
+    examples:
+      - q: "kubectl get pods"
+        a: "يسرد جميع الـ Pod في مساحة الاسم الحالية — يُظهر الاسم والحالة وعمليات إعادة التشغيل والعمر."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["kubectl", "أداة CLI الخاصة بـ Kubernetes للتفاعل مع الـ Cluster", "command"]
+          - ["Pod", "أصغر وحدة قابلة للنشر في Kubernetes — حاوية أو أكثر", "concept"]
+      - q: "kubectl get nodes"
+        a: "يسرد جميع الـ Node في الـ Cluster — يُظهر الاسم والحالة والأدوار وإصدار Kubernetes."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["Node", "خادم (VM أو مادي) يشغّل الـ Pod", "concept"]
+          - ["kubectl-get-nodes", "سرد جميع عقد الـ Cluster", "command"]
+      - q: "ما هو الـ Pod؟"
+        a: "أصغر وحدة قابلة للنشر في Kubernetes. يحتوي الـ Pod على حاوية واحدة أو أكثر تشترك في الشبكة والتخزين."
+        labels: ["Kubernetes"]
+        rel:
+          - ["Pod", "أصغر وحدة قابلة للنشر — حاوية أو أكثر تشترك في الشبكة/التخزين", "concept"]
+
+  - title: "معمارية Kubernetes"
+    image: "images/section-03-architecture.svg"
+    image_caption: "صفحة التحكم وعقد العمال — الجزآن من كل Cluster Kubernetes"
+    explanation: |
+      كل Cluster Kubernetes له نوعان من المكوّنات:
+
+      **صفحة التحكم** (الدماغ):
+      - **API Server** — المحور المركزي؛ جميع الاتصالات تمر عبره
+      - **etcd** — قاعدة البيانات التي تخزّن حالة الـ Cluster بأكملها
+      - **Scheduler** — يقرر أي Node يشغّل كل Pod
+      - **Controller Manager** — يراقب الـ Cluster ويضمن الحالة المطلوبة
+
+      **عقد العمال** (العضلات):
+      - **kubelet** — وكيل على كل Node، يدير الـ Pod
+      - **kube-proxy** — يتعامل مع الشبكات وموازنة الحمل
+      - **وقت تشغيل الحاويات** — يشغّل الحاويات الفعلية (containerd، CRI-O)
+
+      ```
+      ┌─────────────────────────────────┐
+      │         صفحة التحكم            │
+      │  API Server → etcd              │
+      │  Scheduler + Controller Manager │
+      └────────────────┬────────────────┘
+                       │
+          ┌────────────┼────────────┐
+          ▼            ▼            ▼
+      ┌────────┐  ┌────────┐  ┌────────┐
+      │ Node 1 │  │ Node 2 │  │ Node 3 │
+      │ Pods   │  │ Pods   │  │ Pods   │
+      └────────┘  └────────┘  └────────┘
+      ```
+
+      في k0rdent، **Cluster الإدارة** هو نفسه Cluster Kubernetes يشغّل صفحة تحكم k0rdent. ثم يوفّر ويدير **Cluster الأطفال** — كل منها Cluster Kubernetes كامل.
+    examples:
+      - q: "kubectl get pods -n kube-system"
+        a: "يسرد جميع Pod مكوّنات صفحة التحكم التي تعمل في مساحة الاسم kube-system."
+        labels: ["Kubernetes", "Basics"]
+        rel:
+          - ["kube-system", "مساحة الاسم لمكوّنات صفحة التحكم الأساسية لـ Kubernetes", "namespace"]
+          - ["API Server", "المحور المركزي لجميع استدعاءات API في Kubernetes", "component"]
+      - q: "ماذا يخزّن etcd؟"
+        a: "حالة الـ Cluster بأكملها — جميع تعريفات الموارد والإعدادات والحالة المطلوبة مقابل الفعلية لجميع الكائنات."
+        labels: ["Kubernetes"]
+        rel:
+          - ["etcd", "مخزن مفتاح-قيمة موزّع لحالة Cluster Kubernetes بأكملها", "component"]
+      - q: "ما الفرق بين صفحة التحكم وعقد العمال؟"
+        a: "صفحة التحكم تتخذ القرارات (API server، scheduler، etcd). عقد العمال تشغّل Pod التطبيقات الفعلية."
+        labels: ["Kubernetes"]
+
+  - title: "لماذا k0rdent فوق Kubernetes؟"
+    image: "images/section-04-why-k0rdent.svg"
+    image_caption: "k0rdent يدير العديد من Cluster Kubernetes — كمدير أسطول للـ Cluster"
+    explanation: |
+      يحل Kubernetes تنسيق الحاويات **داخل Cluster واحد**. لكن المنظمات الحديثة تشغّل **Cluster عديدة** — تطوير، اختبار، إنتاج، حافة، لكل فريق، لكل منطقة.
+
+      **مشكلة الـ Cluster المتعدد:**
+      - كل Cluster يحتاج إلى توفير منفصل
+      - بيانات الاعتماد والوصول يجب إدارتها لكل منها
+      - الخدمات (ingress، المراقبة، النسخ الاحتياطية) يجب نشرها على كل منها
+      - التحديثات يجب طرحها على جميع الـ Cluster
+      - لا رؤية مركزية لما يعمل أين
+
+      **k0rdent يحل هذا.** إنه **super control plane** — Cluster Kubernetes يدير Cluster Kubernetes أخرى:
+
+      | المشكلة | حل k0rdent |
+      |---------|-----------------|
+      | توفير الـ Cluster | ClusterDeployment + ClusterTemplate |
+      | إدارة بيانات الاعتماد | Credential CRD (المهندسون لا يرون الأسرار أبداً) |
+      | نشر الخدمات | KSM + ServiceTemplates عبر جميع الـ Cluster |
+      | التحديثات ودورة الحياة | سلاسل Template مع مسارات ترقية صالحة |
+      | الرؤية المركزية | Cluster الإدارة كلوحة زجاجية واحدة |
+
+      **تشبيه:** إذا كان Kubernetes قائد ميناء لميناء واحد، فإن k0rdent هو **سلطة الشحن العالمية** التي تدير جميع الموانئ حول العالم.
+    examples:
+      - q: "kubectl get clusterdeployments -A"
+        a: "يسرد جميع نشرات الـ Cluster التي يديرها k0rdent عبر جميع مساحات الأسماء."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["ClusterDeployment", "CRD يمثّل Cluster Kubernetes مُدار", "k0rdent concept"]
+          - ["k0rdent", "Super control plane لإدارة Cluster Kubernetes العديدة", "platform"]
+      - q: "ما هو Cluster الإدارة في k0rdent؟"
+        a: "Cluster Kubernetes الذي تم تثبيت k0rdent عليه. يتحكم في جميع الـ Cluster الأخرى (الأطفال) من موقع مركزي."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["Management Cluster", "الـ Cluster الذي تم تثبيت k0rdent وتشغيله عليه", "k0rdent concept"]
+          - ["Child Cluster", "Cluster يتم توفيره وإدارته بواسطة k0rdent", "k0rdent concept"]
+      - q: "ما هي المكوّنات الثلاثة الرئيسية لـ k0rdent؟"
+        a: "KCM (مدير الـ Cluster للتوفير)، KSM (مدير الحالة للخدمات)، وKOF (المراقبة وFinOps)."
+        labels: ["k0rdent"]
+        rel:
+          - ["KCM", "k0rdent Cluster Manager — نشر وإدارة دورة حياة الـ Cluster", "component"]
+          - ["KSM", "k0rdent State Manager — نشر وإدارة الخدمات على الـ Cluster", "component"]
+          - ["KOF", "k0rdent Observability وFinOps — المقاييس والسجلات والتكلفة", "component"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-05-check.svg"
+    image_caption: "اختبر فهمك للحاويات وKubernetes"
+    explanation: "اختبر معلوماتك قبل الغوص في الإعداد العملي!"
+    examples:
+      - q: "ما الأمر الذي يبدأ حاوية nginx؟"
+        type: input
+        a: "docker run nginx"
+        labels: ["Quiz"]
+      - q: "ما هو الـ Pod في Kubernetes؟"
+        type: select
+        options:
+          - text: "أصغر وحدة قابلة للنشر — حاوية أو أكثر تشترك في الشبكة والتخزين"
+            correct: true
+          - text: "خادم مادي يعمل في السحابة"
+          - text: "وحدة تخزين متصلة بـ Node"
+          - text: "سياسة شبكة للحاويات"
+        labels: ["Quiz"]
+      - q: "ما الأمر الذي يسرد جميع الـ Node في Cluster Kubernetes؟"
+        type: input
+        a: "kubectl get nodes"
+        labels: ["Quiz"]
+      - q: "أيٌّ مما يلي يتعامل معه Kubernetes تلقائياً؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "إعادة تشغيل الحاويات المتعطّلة"
+            correct: true
+          - text: "توزيع حركة المرور عبر الحاويات"
+            correct: true
+          - text: "كتابة كود تطبيقك"
+          - text: "جدولة الـ Pod على الـ Node المتاحة"
+            correct: true
+        labels: ["Quiz"]
+      - q: "لماذا نحتاج إلى k0rdent إذا كان Kubernetes موجوداً؟"
+        type: select
+        options:
+          - text: "Kubernetes لا يمكنه تشغيل الحاويات بدون k0rdent"
+          - text: "k0rdent يدير Cluster Kubernetes عديدة من صفحة تحكم واحدة"
+            correct: true
+          - text: "k0rdent يستبدل Kubernetes بالكامل"
+          - text: "k0rdent مطلوب فقط لحاويات Docker"
+        labels: ["Quiz"]

@@ -1,0 +1,9 @@
+workshops:
+  - folder: k0rdent-workshop
+    code: ar-SA
+    title: "ورشة عمل k0rdent"
+    description: "ورشة عمل عملية لمهندسي المنصات. من أساسيات الحاويات إلى إدارة المجموعات المتعددة مع k0rdent على Hetzner."
+    color: "220 45% 92%"
+    primaryColor: "220 75% 45%"
+    image: "k0rdent-workshop/thumbnail.svg"
+    labels: ["IT", "Kubernetes", "Platform Engineering", "متقدم"]

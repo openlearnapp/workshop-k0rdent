@@ -1,0 +1,13 @@
+lessons:
+  - folder: 00-containers-kubernetes
+  - folder: 01-welcome
+  - folder: 02-management-cluster-setup
+  - folder: 03-verify-installation
+  - folder: 04-templating-system
+  - folder: 05-credentials-access
+  - folder: 06-deploy-cluster
+  - folder: 07-cluster-lifecycle
+  - folder: 08-services-ksm
+  - folder: 09-multicluster-hosted
+  - folder: 10-custom-templates
+  - folder: 11-backup-observability

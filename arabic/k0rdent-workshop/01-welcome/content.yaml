@@ -1,0 +1,225 @@
+version: 2
+number: 2
+title: "مرحباً بك في k0rdent"
+description: "افهم ما هو k0rdent، ولماذا يوجد، ومعماريته لإدارة Kubernetes على نطاق واسع."
+image: "images/lesson-header.svg"
+image_caption: "k0rdent management cluster يتحكم في Cluster الأطفال عبر الموفّرين"
+sections:
+  - title: "ما هو k0rdent؟"
+    image: "images/section-01-what-is-k0rdent.svg"
+    image_caption: "k0rdent كـ super control plane مع مكوّنات KCM وKSM وKOF"
+    explanation: |
+      **k0rdent** هو منصة إدارة دورة حياة Kubernetes — *super control plane* مصمم لإدارة Cluster Kubernetes على نطاق واسع من خلال التوفير المركزي القائم على القوالب وإدارة دورة الحياة.
+
+      بُني على ثلاثة مبادئ رئيسية:
+
+      - Kubernetes ونظامه البيئي **ناضج ومستقر بطبيعته**
+      - يُمكّن اعتماد Kubernetes على نطاق واسع من النشر **في أي مكان**
+      - معايير المجتمع والمصدر المفتوح **تقلل مخاطر الاعتماد**
+
+      يدمج k0rdent أدوات المصدر المفتوح المُثبَتة (Cluster API، Flux، Sveltos، k0smotron، Velero) في إطار عمل متكامل لإدارة دورة الحياة.
+    examples:
+      - q: "ما هو k0rdent؟"
+        a: "Super control plane لـ Kubernetes لإدارة دورة حياة الـ Cluster المركزية القائمة على القوالب على نطاق واسع."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["k0rdent", "منصة إدارة دورة حياة Kubernetes (super control plane)"]
+          - ["KCM", "k0rdent Cluster Manager — نشر وإدارة دورة حياة الـ Cluster"]
+          - ["KSM", "k0rdent State Manager — تثبيت وإدارة دورة حياة الخدمات"]
+          - ["KOF", "k0rdent Observability وFinOps — المراقبة والأحداث وإدارة السجلات"]
+
+      - q: "ما المشكلة التي يحلها k0rdent؟"
+        a: "يوفّر منصة موحدة لتوفير وتحديث وإدارة Cluster Kubernetes عديدة عبر سحابات وبنى تحتية متعددة."
+        labels: ["k0rdent", "Basics"]
+
+      - type: select
+        q: "k0rdent يُوصف على أفضل وجه بأنه:"
+        options:
+          - text: "توزيع Kubernetes مثل k0s أو k3s"
+          - text: "super control plane لإدارة Cluster Kubernetes على نطاق واسع"
+            correct: true
+          - text: "أداة CI/CD pipeline"
+          - text: "وقت تشغيل حاوية"
+        labels: ["Quiz"]
+
+  - title: "لماذا k0rdent؟"
+    image: "images/section-02-why.svg"
+    image_caption: "التحديات الأربعة التي يعالجها k0rdent: التعقيد، هندسة المنصات، التوزيع، المصدر المفتوح"
+    explanation: |
+      تم إنشاء k0rdent لمعالجة أربعة تحديات رئيسية:
+
+      1. **تعقيد التطبيقات** — تتطلب أعباء العمل الحديثة (AI/ML، الخدمات الدقيقة) نشراً سريعاً وبنية تحتية متخصصة
+      2. **هندسة المنصات** — تحتاج المنظمات إلى منصات المطوّرين الداخلية (IDP) لإدارة التعقيد
+      3. **البنية التحتية الموزّعة** — النشر الموزّع هو المعيار الجديد
+      4. **المصدر المفتوح** — الاستفادة من نظام Kubernetes البيئي توفّر استقلالاً عن البائعين وأدوات مُثبَتة
+    examples:
+      - q: "ما الأسباب الأربعة لوجود k0rdent؟"
+        a: "تعقيد التطبيقات، احتياجات هندسة المنصات، إدارة البنية التحتية الموزّعة، والاستفادة من نظام المصدر المفتوح البيئي."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["IDP", "منصة المطوّر الداخلية — قدرات الخدمة الذاتية للمطوّرين"]
+          - ["Platform Engineering", "ممارسة بناء وصيانة منصات المطوّر الداخلية"]
+
+      - type: multiple-choice
+        q: "ما التحديات التي يعالجها k0rdent؟ (اختر كل ما ينطبق)"
+        options:
+          - text: "تزايد تعقيد التطبيقات وأعباء العمل"
+            correct: true
+          - text: "الحاجة إلى منصات المطوّر الداخلية"
+            correct: true
+          - text: "استبدال أوقات تشغيل الحاويات"
+          - text: "إدارة البنية التحتية الموزّعة على نطاق واسع"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "نظرة عامة على المعمارية"
+    image: "images/section-03-architecture.svg"
+    image_caption: "معمارية k0rdent ثلاثية المكوّنات: KCM وKSM وKOF"
+    explanation: |
+      لـ k0rdent ثلاثة مكوّنات رئيسية:
+
+      **KCM (k0rdent Cluster Manager)**
+      - يُغلّف قدرات CAPI (Cluster API)
+      - ينسّق توفير الـ Cluster عبر الموفّرين
+      - يدمج k0smotron لـ bootstrap الـ k0s والـ hosted control plane
+
+      **KSM (k0rdent State Manager)**
+      - يدير دورة حياة الخدمات والتطبيقات على Cluster الأطفال
+      - يستخدم ProjectSveltos كحل CD مدمج
+      - نشر وتوسيع وتحديث وترقية وإيقاف الخدمات
+
+      **KOF (k0rdent Observability & FinOps)**
+      - مراقبة على مستوى المؤسسات عبر OpenTelemetry
+      - جمع مقاييس وسجلات وإدارة تكاليف مركزية
+
+      تتبع المعمارية نموذج **management cluster → child cluster**. يستضيف Cluster الإدارة جميع وحدات التحكم وينسّق كل شيء.
+    examples:
+      - q: "ما هي المكوّنات الثلاثة الرئيسية لـ k0rdent؟"
+        a: "KCM (مدير الـ Cluster) وKSM (مدير الحالة) وKOF (المراقبة وFinOps)."
+        labels: ["k0rdent", "Basics"]
+
+      - q: "ما هو Cluster الإدارة؟"
+        a: "Cluster Kubernetes الذي تم تثبيت k0rdent عليه، والذي يتم التحكم في جميع الـ Cluster المُدارة الأخرى منه."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["Management Cluster", "الـ Cluster الذي تم تثبيت k0rdent وتشغيله عليه"]
+          - ["Child Cluster", "Cluster يتم توفيره وإدارته بواسطة Cluster الإدارة"]
+          - ["CAPI", "Cluster API — إدارة دورة حياة Cluster Kubernetes التعريفية"]
+          - ["k0smotron", "أداة لتشغيل صفحات تحكم k0s كـ Pod في Cluster الإدارة"]
+          - ["ProjectSveltos", "وحدة تحكم إضافات Kubernetes مفتوحة المصدر يستخدمها KSM"]
+
+      - type: select
+        q: "أي مكوّن يتعامل مع نشر الخدمات على Cluster الأطفال؟"
+        options:
+          - text: "KCM (Cluster Manager)"
+          - text: "KSM (State Manager)"
+            correct: true
+          - text: "KOF (Observability & FinOps)"
+          - text: "CAPI مباشرة"
+        labels: ["Quiz"]
+
+  - title: "الأدوار التنظيمية"
+    image: "images/section-04-roles.svg"
+    image_caption: "ثلاثة أدوار تنظيمية: Platform Architect وLead وEngineer"
+    explanation: |
+      يُعرّف k0rdent ثلاثة أدوار تنظيمية:
+
+      | الدور | المسؤولية |
+      |------|---------------|
+      | **Platform Architect** | يصمم منصات مجردة، ينشئ قوالب قابلة لإعادة الاستخدام |
+      | **Platform Lead** | يُكيّف القوالب لسحابات محددة، يدير ضوابط الوصول |
+      | **Platform Engineer** | الإدارة اليومية، يستخدم القوالب المُصرَّح بها، يخصّص الخدمات |
+
+      يضمن هذا الفصل إدارة بيانات الاعتماد والتهيئات المعقدة من قبل القادة، بينما يمكن للمهندسين نشر الـ Cluster دون وصول مباشر لبيانات الاعتماد.
+    examples:
+      - q: "من ينشئ القوالب القابلة لإعادة الاستخدام في k0rdent؟"
+        a: "Platform Architect يصمم المنصات المجردة وينشئ القوالب القابلة لإعادة الاستخدام."
+        labels: ["k0rdent", "Security"]
+        rel:
+          - ["Platform Architect", "يصمم المنصات وينشئ القوالب القابلة لإعادة الاستخدام"]
+          - ["Platform Lead", "يُكيّف القوالب، يدير ضوابط الوصول وبيانات الاعتماد"]
+          - ["Platform Engineer", "الإدارة اليومية للـ Cluster والخدمات"]
+
+      - type: select
+        q: "من يجب أن يتمتع بوصول مباشر لبيانات اعتماد موفّر السحابة؟"
+        options:
+          - text: "جميع مهندسي المنصات"
+          - text: "Platform Lead فقط"
+            correct: true
+          - text: "Platform Architect فقط"
+          - text: "لا أحد — يتم توليد بيانات الاعتماد تلقائياً"
+        labels: ["Quiz"]
+
+  - title: "الموفّرون المدعومون"
+    image: "images/section-05-providers.svg"
+    image_caption: "k0rdent يدعم AWS وAzure وGCP وvSphere وOpenStack وKubeVirt وRemote/SSH"
+    explanation: |
+      يدعم k0rdent عدة موفّري بنية تحتية خارج الصندوق:
+
+      - **AWS** (CAPA) — Cluster مستقلة وEKS
+      - **Azure** (CAPZ) — Cluster مستقلة وAKS
+      - **GCP** (CAPG) — Cluster مستقلة وGKE
+      - **vSphere** (CAPV) — بيئات VMware
+      - **OpenStack** (CAPO) — السحابة الخاصة
+      - **KubeVirt** — المحاكاة الافتراضية الأصيلة لـ Kubernetes
+      - **Remote/SSH** — الأجهزة العارية أو أي جهاز Linux مع وصول SSH
+
+      في هذه الورشة، سنركّز على **Hetzner** باستخدام موفّر **Remote/SSH**.
+    examples:
+      - q: "أي موفّر نستخدم لـ Hetzner في k0rdent؟"
+        a: "موفّر Remote/SSH الذي ينشر Cluster k0s على أي جهاز Linux عبر SSH."
+        labels: ["k0rdent", "Cluster"]
+        rel:
+          - ["CAPA", "Cluster API Provider لـ AWS"]
+          - ["CAPZ", "Cluster API Provider لـ Azure"]
+          - ["CAPG", "Cluster API Provider لـ GCP"]
+          - ["CAPV", "Cluster API Provider لـ vSphere"]
+          - ["CAPO", "Cluster API Provider لـ OpenStack"]
+          - ["Remote/SSH", "موفّر للنشر على الأجهزة العارية أو أي جهاز Linux عبر SSH"]
+
+      - type: multiple-choice
+        q: "أي الموفّرين يدعمها k0rdent؟ (اختر كل ما ينطبق)"
+        options:
+          - text: "AWS"
+            correct: true
+          - text: "Azure"
+            correct: true
+          - text: "DigitalOcean بشكل أصيل"
+          - text: "Remote/SSH"
+            correct: true
+          - text: "OpenStack"
+            correct: true
+        labels: ["Quiz"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-06-check.svg"
+    image_caption: "اختبر معرفتك بمفاهيم k0rdent ومعماريته"
+    explanation: "اختبر فهمك لـ k0rdent قبل إعداد أول Cluster!"
+    examples:
+      - q: "ما هي المكوّنات الثلاثة الرئيسية لـ k0rdent؟"
+        type: input
+        a:
+          - "KCM, KSM, KOF"
+          - "KCM KSM KOF"
+          - "k0rdent Cluster Manager, State Manager, Observability"
+        labels: ["Quiz"]
+      - q: "k0rdent يُوصف على أفضل وجه بأنه:"
+        type: select
+        options:
+          - text: "توزيع Kubernetes مثل k3s أو k0s"
+          - text: "super control plane لإدارة Cluster Kubernetes عديدة على نطاق واسع"
+            correct: true
+          - text: "وقت تشغيل حاوية مثل Docker"
+          - text: "أداة CI/CD pipeline"
+        labels: ["Quiz"]
+      - q: "أي من الأدوار التنظيمية لـ k0rdent صحيح؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "Platform Architect — ينشئ قوالب قابلة لإعادة الاستخدام"
+            correct: true
+          - text: "Platform Lead — يدير بيانات الاعتماد والوصول"
+            correct: true
+          - text: "Platform Engineer — ينشر الـ Cluster باستخدام القوالب المُصرَّح بها"
+            correct: true
+          - text: "Cluster Root — مدير كامل لجميع Cluster الأطفال"
+        labels: ["Quiz"]

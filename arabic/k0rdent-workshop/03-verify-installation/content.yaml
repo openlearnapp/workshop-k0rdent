@@ -1,0 +1,236 @@
+version: 2
+number: 4
+title: "التحقق من التثبيت واستكشافه"
+description: "تأكد من أن k0rdent يعمل بشكل كامل من خلال فحص الـ Pod والقوالب وكائن الإدارة."
+image: "images/lesson-header.svg"
+image_caption: "kubectl get pods -n kcm-system يُظهر ~26 Pod قيد التشغيل"
+sections:
+  - title: "فحص Pod الـ KCM"
+    image: "images/section-01-kcm-pods.svg"
+    image_caption: "~26 Pod قيد التشغيل في مساحة الاسم kcm-system بما فيها وحدات تحكم CAPI والموفّرين"
+    explanation: |
+      انتظر 5-10 دقائق بعد التثبيت، ثم تحقق من أن جميع الـ Pod في مساحة الاسم `kcm-system` تعمل:
+
+      ```bash
+      kubectl get pods -n kcm-system
+      ```
+
+      يجب أن ترى تقريباً **26 Pod** قيد التشغيل، بما فيها:
+
+      | الـ Pod | الغرض |
+      |-----|---------|
+      | `azureserviceoperator-*` | موفّر Azure |
+      | `capa-*` | موفّر AWS (CAPA) |
+      | `capi-*` | Cluster API الأساسي |
+      | `capg-*` | موفّر GCP |
+      | `capo-*` | موفّر OpenStack |
+      | `capv-*` | موفّر vSphere |
+      | `capz-*` | موفّر Azure (CAPZ) |
+      | `helm-controller-*` | وحدة تحكم Helm لـ Flux |
+      | `kcm-cert-manager-*` | إدارة الشهادات |
+      | `kcm-controller-manager-*` | وحدة التحكم الرئيسية لـ KCM |
+      | `k0smotron-*` | Hosted control plane |
+      | `source-controller-*` | وحدة تحكم المصدر لـ Flux |
+
+      **استكشاف الأخطاء:** إذا أظهرت الـ Pod إعادة تشغيل أو `CrashLoopBackOff`، استخدم `kubectl describe pod <name> -n kcm-system` للتحقيق.
+    examples:
+      - q: "كم Pod يجب أن يعمل في kcm-system؟"
+        a: "تقريباً 26 Pod، بما فيها وحدات تحكم CAPI ووحدات تحكم الموفّرين ووحدات تحكم Flux وcert-manager."
+        labels: ["k0rdent", "Kubernetes"]
+        rel:
+          - ["kcm-system", "مساحة الاسم التي تعمل فيها جميع مكوّنات صفحة التحكم لـ k0rdent"]
+          - ["CAPI controller", "وحدة تحكم Cluster API الأساسية لدورة حياة الـ Cluster"]
+          - ["Flux controllers", "وحدات تحكم GitOps لإدارة Helm والمصدر"]
+
+      - type: input
+        q: "ما الأمر الذي يسرد جميع الـ Pod في مساحة الاسم kcm-system؟"
+        a:
+          - "kubectl get pods -n kcm-system"
+        labels: ["Quiz"]
+
+  - title: "فحص Pod الـ KSM (ProjectSveltos)"
+    image: "images/section-02-ksm-pods.svg"
+    image_caption: "~10 Pod قيد التشغيل في مساحة الاسم projectsveltos"
+    explanation: |
+      يستخدم State Manager لـ k0rdent ProjectSveltos. تحقق من Pod الخاصة به:
+
+      ```bash
+      kubectl get pods -n projectsveltos
+      ```
+
+      يجب أن ترى تقريباً **10 Pod** قيد التشغيل:
+
+      - `access-manager` — يدير ضوابط الوصول
+      - `addon-controller` — ينشر الخدمات على Cluster الأطفال
+      - `classifier-manager` — يُصنّف الـ Cluster
+      - `event-manager` — يتعامل مع الأحداث
+      - `healthcheck-manager` — يراقب الصحة
+      - `shard-controller` — يدير التقسيم
+      - `sc-manager` — مدير كتالوج الخدمة
+      - `conversion-webhook` — تحويلات إصدار API
+      - `drift-detection-manager` — يكتشف انجراف الإعداد
+      - `sveltos-agent-manager` — إدارة الوكيل
+    examples:
+      - q: "في أي مساحة اسم يعمل ProjectSveltos؟"
+        a: "projectsveltos"
+        labels: ["k0rdent", "Services"]
+        rel:
+          - ["projectsveltos", "مساحة الاسم لـ Pod إدارة الخدمات KSM/Sveltos"]
+          - ["addon-controller", "مكوّن Sveltos الذي ينشر الخدمات على Cluster الأطفال"]
+          - ["drift-detection-manager", "يكتشف انجراف الإعداد في الـ Cluster المُدارة"]
+
+      - type: select
+        q: "أي مكوّن ينشر الخدمات على Cluster الأطفال؟"
+        options:
+          - text: "classifier-manager"
+          - text: "addon-controller"
+            correct: true
+          - text: "shard-controller"
+          - text: "access-manager"
+        labels: ["Quiz"]
+
+  - title: "التحقق من قوالب الموفّر"
+    image: "images/section-03-provider-templates.svg"
+    image_caption: "جميع ProviderTemplate تُظهر VALID: true"
+    explanation: |
+      تُعرّف ProviderTemplate موفّري البنية التحتية المتاحين. تحقق من أنها جميعاً صالحة:
+
+      ```bash
+      kubectl get providertemplate -n kcm-system
+      ```
+
+      يجب أن تُظهر جميع القوالب `VALID: true`. ستجد قوالب لـ:
+      - `cluster-api` — CAPI الأساسي
+      - `cluster-api-provider-aws` — AWS
+      - `cluster-api-provider-azure` — Azure
+      - `cluster-api-provider-gcp` — GCP
+      - `cluster-api-provider-openstack` — OpenStack
+      - `cluster-api-provider-vsphere` — vSphere
+      - `k0smotron` — hosted control plane
+      - `kcm` — k0rdent نفسه
+      - `projectsveltos` — إدارة الخدمة
+    examples:
+      - q: "ماذا تعني VALID: true لـ ProviderTemplate؟"
+        a: "تم التحقق من صحة القالب بنجاح — Helm chart الخاص به متاح، والموفّرون معروفون، وهو جاهز للاستخدام."
+        labels: ["k0rdent", "Templates"]
+        rel:
+          - ["ProviderTemplate", "CRD يكشف عن موفّري CAPI لعمليات البنية التحتية والـ bootstrap وصفحة التحكم"]
+
+      - type: input
+        q: "ما الأمر الذي يسرد جميع قوالب الموفّر؟"
+        a:
+          - "kubectl get providertemplate -n kcm-system"
+        labels: ["Quiz"]
+
+  - title: "التحقق من قوالب الـ Cluster"
+    image: "images/section-04-cluster-templates.svg"
+    image_caption: "ClusterTemplate لجميع الموفّرين تُظهر VALID: true"
+    explanation: |
+      ClusterTemplate هي مخططات لإنشاء الـ Cluster. تحقق من القوالب المثبّتة مسبقاً:
+
+      ```bash
+      kubectl get clustertemplate -n kcm-system
+      ```
+
+      ستجد قوالب لموفّرين وتوبولوجيات مختلفة:
+
+      | نمط القالب | الوصف |
+      |-----------------|-------------|
+      | `aws-standalone-cp-*` | Cluster مستقل على AWS |
+      | `aws-eks-*` | Cluster مُدار EKS على AWS |
+      | `aws-hosted-cp-*` | Hosted control plane على AWS |
+      | `azure-standalone-cp-*` | Cluster مستقل على Azure |
+      | `azure-aks-*` | Cluster مُدار AKS على Azure |
+      | `gcp-standalone-cp-*` | Cluster مستقل على GCP |
+      | `remote-cluster-*` | Cluster Remote/SSH |
+
+      يجب أن تُظهر جميعها `VALID: true`.
+    examples:
+      - q: "ما هو ClusterTemplate؟"
+        a: "مخطط قابل لإعادة الاستخدام وغير قابل للتغيير يُعرّف التهيئة والمكوّنات وخصائص Cluster Kubernetes."
+        labels: ["k0rdent", "Templates"]
+        rel:
+          - ["ClusterTemplate", "مخطط غير قابل للتغيير لتعريف تهيئات الـ Cluster"]
+          - ["standalone", "توبولوجيا Cluster تعمل فيها صفحة التحكم على عقد مخصصة"]
+          - ["hosted", "توبولوجيا Cluster تعمل فيها صفحة التحكم كـ Pod في Cluster الإدارة"]
+
+      - type: multiple-choice
+        q: "أي من هذه أنواع ClusterTemplate صالحة؟ (اختر كل ما ينطبق)"
+        options:
+          - text: "aws-standalone-cp"
+            correct: true
+          - text: "azure-hosted-cp"
+            correct: true
+          - text: "remote-cluster"
+            correct: true
+          - text: "docker-local-cp"
+        labels: ["Quiz"]
+
+  - title: "التحقق من كائن الإدارة"
+    image: "images/section-05-management.svg"
+    image_caption: "كائن الإدارة يُظهر READY: True — k0rdent يعمل بشكل كامل"
+    explanation: |
+      الفحص الأخير — تحقق من أن كائن الإدارة جاهز:
+
+      ```bash
+      kubectl get management -n kcm-system
+      ```
+
+      المخرجات المتوقعة:
+      ```
+      NAME   READY   RELEASE
+      kcm    True    kcm-1-8-0
+      ```
+
+      `READY: True` يؤكد أن k0rdent يعمل بشكل كامل. إذا أظهر `False`، انتظر بضع دقائق أخرى وتحقق من سجلات الـ Pod للأخطاء.
+
+      لمزيد من التفاصيل:
+      ```bash
+      kubectl get management kcm -n kcm-system -o yaml
+      ```
+    examples:
+      - q: "ماذا يمثّل كائن الإدارة؟"
+        a: "التهيئة الإدارية الأساسية في k0rdent. READY: True يؤكد أن كل شيء يعمل."
+        labels: ["k0rdent", "Basics"]
+        rel:
+          - ["Management", "CRD يمثّل التهيئة والحالة الإجمالية لإدارة k0rdent"]
+
+      - type: select
+        q: "كائن الإدارة لديك يُظهر READY: False. ماذا تفعل أولاً؟"
+        options:
+          - text: "أعد تثبيت k0rdent فوراً"
+          - text: "انتظر بضع دقائق أخرى وتحقق من سجلات الـ Pod"
+            correct: true
+          - text: "احذف كائن الإدارة"
+          - text: "أعد تشغيل الخادم"
+        labels: ["Quiz"]
+
+  - title: "🖥️ اختبار المعرفة"
+    image: "images/section-06-check.svg"
+    image_caption: "تحقق من فهمك لعمليات فحص k0rdent بعد التثبيت"
+    explanation: "اختبر معرفتك بالتحقق من تثبيت k0rdent!"
+    examples:
+      - q: "ما الأمر الذي يتحقق من تشغيل جميع مكوّنات k0rdent؟"
+        type: input
+        a:
+          - "kubectl get pods -n kcm-system"
+        labels: ["Quiz"]
+      - q: "ماذا تعني VALID: true على ClusterTemplate؟"
+        type: select
+        options:
+          - text: "تم نشر الـ Cluster بنجاح"
+          - text: "Helm chart الخاص بالقالب متاح والموفّرون معروفون — جاهز للاستخدام"
+            correct: true
+          - text: "تم استخدام القالب على الأقل مرة واحدة"
+          - text: "القالب محدد حالياً للنشر"
+        labels: ["Quiz"]
+      - q: "أي مساحات الأسماء تحتوي على مكوّنات صفحة التحكم لـ k0rdent؟ (اختر كل ما ينطبق)"
+        type: multiple-choice
+        options:
+          - text: "kcm-system"
+            correct: true
+          - text: "projectsveltos"
+            correct: true
+          - text: "kube-system"
+          - text: "default"
+        labels: ["Quiz"]

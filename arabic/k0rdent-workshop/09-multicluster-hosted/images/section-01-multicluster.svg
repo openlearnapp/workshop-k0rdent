@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160">
+  <rect width="640" height="160" fill="#0d1117" rx="10" stroke="#58a6ff" stroke-width="1.5" stroke-opacity="0.4"/>
+  <rect x="1" y="1" width="638" height="28" rx="10" fill="#161b22"/>
+  <rect x="1" y="20" width="638" height="9" fill="#161b22"/>
+  <circle cx="18" cy="14" r="5" fill="#f85149" opacity="0.8"/>
+  <circle cx="34" cy="14" r="5" fill="#f0883e" opacity="0.8"/>
+  <circle cx="50" cy="14" r="5" fill="#3fb950" opacity="0.8"/>
+  <text x="320" y="18" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">MultiClusterService Concept</text>
+  <text x="24" y="55" font-family="monospace" font-size="11" fill="#3fb950">apiVersion</text>
+  <text x="24" y="76" font-family="monospace" font-size="11" fill="#8b949e"> k0rdent.mirantis.com/v1beta1</text>
+  <text x="24" y="96" font-family="monospace" font-size="11" fill="#58a6ff">kind</text>
+  <text x="24" y="116" font-family="monospace" font-size="11" fill="#8b949e"> MultiClusterService  clusterSelector::  matchLabels: environment: dev:→ deploys to ALL matching clusters</text>
+</svg>

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160">
+  <rect width="640" height="160" fill="#0d1117" rx="10" stroke="#58a6ff" stroke-width="1.5" stroke-opacity="0.4"/>
+  <rect x="1" y="1" width="638" height="28" rx="10" fill="#161b22"/>
+  <rect x="1" y="20" width="638" height="9" fill="#161b22"/>
+  <circle cx="18" cy="14" r="5" fill="#f85149" opacity="0.8"/>
+  <circle cx="34" cy="14" r="5" fill="#f0883e" opacity="0.8"/>
+  <circle cx="50" cy="14" r="5" fill="#3fb950" opacity="0.8"/>
+  <text x="320" y="18" text-anchor="middle" font-family="monospace" font-size="11" fill="#8b949e">Kubernetes — The Harbour Master</text>
+
+  <!-- Control Plane -->
+  <rect x="20" y="42" width="140" height="100" fill="#161b22" stroke="#58a6ff" stroke-width="1.5" rx="4"/>
+  <text x="90" y="58" text-anchor="middle" font-family="monospace" font-size="10" fill="#58a6ff" font-weight="bold">Control Plane</text>
+  <text x="90" y="76" text-anchor="middle" font-family="monospace" font-size="8" fill="#8b949e">API Server</text>
+  <text x="90" y="90" text-anchor="middle" font-family="monospace" font-size="8" fill="#8b949e">Scheduler</text>
+  <text x="90" y="104" text-anchor="middle" font-family="monospace" font-size="8" fill="#8b949e">etcd</text>
+  <text x="90" y="118" text-anchor="middle" font-family="monospace" font-size="8" fill="#8b949e">Controller Mgr</text>
+  <text x="90" y="134" text-anchor="middle" font-family="monospace" font-size="8" fill="#58a6ff">the brain</text>
+
+  <!-- Arrows -->
+  <line x1="160" y1="92" x2="200" y2="92" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+  <!-- Node 1 -->
+  <rect x="200" y="42" width="120" height="46" fill="#161b22" stroke="#3fb950" stroke-width="1" rx="3"/>
+  <text x="260" y="57" text-anchor="middle" font-family="monospace" font-size="9" fill="#3fb950">Node 1</text>
+  <rect x="210" y="62" width="30" height="18" fill="#1f6feb" rx="2"/>
+  <text x="225" y="74" text-anchor="middle" font-family="monospace" font-size="7" fill="white">Pod</text>
+  <rect x="248" y="62" width="30" height="18" fill="#238636" rx="2"/>
+  <text x="263" y="74" text-anchor="middle" font-family="monospace" font-size="7" fill="white">Pod</text>
+  <rect x="286" y="62" width="24" height="18" fill="#b56800" rx="2"/>
+  <text x="298" y="74" text-anchor="middle" font-family="monospace" font-size="7" fill="white">Pod</text>
+
+  <!-- Node 2 -->
+  <rect x="200" y="96" width="120" height="46" fill="#161b22" stroke="#3fb950" stroke-width="1" rx="3"/>
+  <text x="260" y="111" text-anchor="middle" font-family="monospace" font-size="9" fill="#3fb950">Node 2</text>
+  <rect x="210" y="116" width="30" height="18" fill="#1f6feb" rx="2"/>
+  <text x="225" y="128" text-anchor="middle" font-family="monospace" font-size="7" fill="white">Pod</text>
+  <rect x="248" y="116" width="30" height="18" fill="#238636" rx="2"/>
+  <text x="263" y="128" text-anchor="middle" font-family="monospace" font-size="7" fill="white">Pod</text>
+
+  <!-- Commands -->
+  <text x="350" y="55" font-family="monospace" font-size="12" fill="#3fb950">$ kubectl get pods</text>
+  <text x="350" y="72" font-family="monospace" font-size="10" fill="#8b949e">NAME              READY  STATUS</text>
+  <text x="350" y="88" font-family="monospace" font-size="10" fill="#58a6ff">nginx-7f65d  1/1   Running</text>
+  <text x="350" y="104" font-family="monospace" font-size="10" fill="#58a6ff">app-9k2ms   1/1   Running</text>
+  <text x="350" y="120" font-family="monospace" font-size="10" fill="#58a6ff">db-3xp91    1/1   Running</text>
+  <text x="350" y="140" font-family="monospace" font-size="10" fill="#3fb950">$ kubectl get nodes</text>
+</svg>
